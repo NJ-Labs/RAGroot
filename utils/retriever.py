@@ -154,7 +154,7 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
             temperature=cfg.TEMPERATURE,
             top_p=cfg.TOP_P,
             repeat_penalty=cfg.REPEAT_PENALTY,
-            stop=["---QUESTION---", "---ANSWER---", "User Question:", "References:", "\nReferences:", "\n\nReferences:"],
+            stop=["Citations", "---CITATIONS---","---QUESTION---", "---ANSWER---", "User Question:", "References:", "\nReferences:", "\n\nReferences:"],
             echo=False
         )
         
@@ -183,13 +183,18 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
 
     async def stream_answer(self, query: str, top_k: int = 5) -> AsyncGenerator[Dict, None]:
         """Stream answer generation (bonus feature)."""
+        import asyncio
         
         # Retrieve documents
         results = self.indexer.search(query, top_k=top_k)
         
         if not results:
             yield {
-                "type": "answer",
+                "type": "token",
+                "content": "I couldn't find any relevant documents to answer your question."
+            }
+            yield {
+                "type": "complete",
                 "content": "I couldn't find any relevant documents to answer your question."
             }
             return
@@ -197,11 +202,15 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
         # Extract documents
         context_docs = [r['document'] for r in results]
         
-        # Send citations first
+        # Send citations first (with authors field)
         yield {
             "type": "citations",
             "content": [
-                {"doc_id": doc['id'], "title": doc['title']}
+                {
+                    "doc_id": doc['id'], 
+                    "title": doc['title'],
+                    "authors": doc.get('authors', 'Unknown')
+                }
                 for doc in context_docs
             ]
         }
@@ -215,15 +224,19 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
         # Build prompt
         prompt = self._build_prompt(query, context_docs)
         
-        # Stream answer
+        # Stream answer with config settings
         full_answer = ""
         from .config import config
+        
+        # Use a token counter to yield control to event loop periodically
+        token_count = 0
         for chunk in self.llm(
             prompt,
-            max_tokens=512,
+            max_tokens=config.MAX_TOKENS,
             temperature=config.TEMPERATURE,
             top_p=config.TOP_P,
-            stop=["User Question:", "Retrieved Documents:", "References:", "\nReferences:", "\n\nReferences:"],
+            repeat_penalty=config.REPEAT_PENALTY,
+            stop=["---QUESTION---", "---ANSWER---", "User Question:", "References:", "\nReferences:", "\n\nReferences:"],
             stream=True
         ):
             token = chunk['choices'][0]['text']
@@ -232,6 +245,11 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
                 "type": "token",
                 "content": token
             }
+            
+            # Yield control to event loop every token to enable true streaming
+            token_count += 1
+            if token_count % 1 == 0:  # Every token
+                await asyncio.sleep(0)  # Yield control to event loop
         
         # Send completion signal
         yield {

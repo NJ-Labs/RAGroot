@@ -1,1398 +1,869 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAGroot - foundational reference app | AI-Powered RAG</title>
-    <meta name="description" content="AI-powered academic research assistant using RAG to answer questions about research papers">
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/public/logo.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/static/public/logo.png">
-    <link rel="apple-touch-icon" href="/static/public/logo.png">
-    <!-- Marked.js for Markdown rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Font Awesome for modern icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- MathJax for LaTeX rendering -->
+    <title>RAGroot - AI Research Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                processEscapes: true,
-                processEnvironments: true
-            },
-            options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#00b8b8',
+                            light: '#00d4d4',
+                            dark: '#008a8a',
+                        },
+                        accent: {
+                            DEFAULT: '#7f5af0',
+                            light: '#a78bfa',
+                        },
+                        secondary: '#f9a826',
+                        tertiary: '#2cb67d',
+                        // Semantic colors for theming
+                        background: {
+                            light: '#f8fafc', // Slate 50
+                            dark: '#16161a',
+                        },
+                        surface: {
+                            light: '#ffffff',
+                            dark: '#242629',
+                        },
+                        text: {
+                            light: '#1e293b', // Slate 800
+                            dark: '#fffffe',
+                        },
+                        muted: {
+                            light: '#64748b', // Slate 500
+                            dark: '#94a1b2',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in-down': 'fadeInDown 0.5s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeInDown: {
+                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
             }
-        };
+        }
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
     <style>
-        :root {
-            --primary-color: #667eea;
-            --secondary-color: #764ba2;
-            --success-color: #10b981;
-            --error-color: #ef4444;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb;
-            --bg-tertiary: #f3f4f6;
-            --border-color: #e5e7eb;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        body { 
+            margin: 0; 
+            overflow-x: hidden; 
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s ease, color 0.5s ease;
         }
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        #canvas-container { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: -1; 
+            opacity: 0.6; 
+            transition: opacity 0.5s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #242629; }
+        ::-webkit-scrollbar-thumb:hover { background: #00b8b8; }
+        
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
         
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: var(--text-primary);
-            line-height: 1.6;
+        /* Light Mode Glass */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
-        
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
+
+        /* Dark Mode Glass */
+        .dark .glass-panel {
+            background: rgba(36, 38, 41, 0.7);
+            border: 1px solid rgba(148, 161, 178, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: var(--bg-primary);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl), 0 0 0 1px rgba(0,0,0,0.05);
-            overflow: hidden;
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
+
+        /* --- Cinematic Toggle Styles --- */
+        .theme-toggle-container {
             position: relative;
+            width: 104px;
+            height: 44px;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
             overflow: hidden;
+            /* Default Light Mode Background */
+            background: radial-gradient(ellipse at top left, #ffffff80 0%, #f1f5f940 40%, #cbd5e180 100%);
+            border: 2px solid rgba(203, 213, 225, 0.4);
+            box-shadow: 
+                inset 5px 5px 12px rgba(148, 163, 184, 0.5),
+                inset -5px -5px 12px rgba(255, 255, 255, 0.253),
+                inset 8px 8px 16px rgba(100, 116, 139, 0.3),
+                inset -8px -8px 16px rgba(255, 255, 255, 0.9),
+                inset 0 2px 4px rgba(148, 163, 184, 0.4),
+                inset 0 -2px 4px rgba(255, 255, 255, 1),
+                inset 0 0 20px rgba(203, 213, 225, 0.3),
+                0 1px 2px rgba(255, 255, 255, 1),
+                0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        
-        .header::before {
-            content: '';
+
+        .dark .theme-toggle-container {
+            background: radial-gradient(ellipse at top left, #1e293b00 0%, #0f172a00 40%, #02061700 100%);
+            border: 2px solid rgba(51, 65, 85, 0.3);
+            box-shadow: 
+                inset 5px 5px 12px rgba(0, 0, 0, 0.6),
+                inset -5px -5px 12px rgba(71, 85, 105, 0.3),
+                inset 8px 8px 16px rgba(0, 0, 0, 0.6),
+                inset -8px -8px 16px rgba(100, 116, 139, 0.2),
+                inset 0 2px 4px rgba(0, 0, 0, 1),
+                inset 0 -2px 4px rgba(71, 85, 105, 0.4),
+                inset 0 0 20px rgba(0, 0, 0, 0.6),
+                0 1px 1px rgba(255, 255, 255, 0.05),
+                0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .toggle-thumb {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.05)"/></svg>');
-            opacity: 0.1;
-        }
-        
-        .header-content {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-        
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.95;
-            font-weight: 400;
-        }
-        
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8em;
-            }
-            .header p {
-                font-size: 1em;
-            }
-        }
-        
-        .content {
-            padding: 40px;
-        }
-        
-        @media (max-width: 768px) {
-            .content {
-                padding: 20px;
-            }
-        }
-        
-        .query-section {
-            margin-bottom: 30px;
-        }
-        
-        .input-group {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        
-        @media (max-width: 768px) {
-            .input-group {
-                flex-direction: column;
-            }
-        }
-        
-        .input-wrapper {
-            flex: 1;
-            position: relative;
-        }
-        
-        .input-icon {
-            position: absolute;
-            left: 18px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-            font-size: 18px;
-        }
-        
-        #queryInput {
-            width: 100%;
-            padding: 16px 20px 16px 50px;
-            font-size: 16px;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            outline: none;
-            transition: var(--transition);
-            background: var(--bg-primary);
-            font-family: inherit;
-        }
-        
-        #queryInput:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        #queryInput::placeholder {
-            color: var(--text-secondary);
-        }
-        
-        button {
-            padding: 16px 32px;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: inherit;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-        
-        #submitBtn {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            box-shadow: var(--shadow-md);
-        }
-        
-        #submitBtn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        #submitBtn:active:not(:disabled) {
-            transform: translateY(0);
-        }
-        
-        #submitBtn:disabled {
-            background: var(--text-secondary);
-            cursor: not-allowed;
-            transform: none;
-            opacity: 0.6;
-        }
-        
-        .options {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            padding: 16px 20px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-        }
-        
-        @media (max-width: 768px) {
-            .options {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 16px;
-            }
-        }
-        
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            user-select: none;
-        }
-        
-        .checkbox-group label {
-            cursor: pointer;
-            font-weight: 500;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: var(--primary-color);
-        }
-        
-        .select-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .select-wrapper label {
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-        
-        .select-wrapper select {
-            padding: 8px 32px 8px 12px;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            background: var(--bg-primary);
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-primary);
-            transition: var(--transition);
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-        }
-        
-        .select-wrapper select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .results-section {
-            display: none;
-            animation: slideIn 0.4s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .results-section.visible {
-            display: block;
-        }
-        
-        .answer-box {
-            background: var(--bg-secondary);
-            border: 2px solid var(--primary-color);
-            border-radius: var(--radius-md);
-            padding: 28px;
-            margin-bottom: 24px;
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .answer-box h3 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            font-size: 1.4em;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .answer-text {
-            line-height: 1.8;
-            color: var(--text-primary);
-            font-size: 1.05em;
-        }
-        
-        /* Markdown styling for answer text */
-        .answer-text h1, .answer-text h2, .answer-text h3, 
-        .answer-text h4, .answer-text h5, .answer-text h6 {
-            margin-top: 20px;
-            margin-bottom: 10px;
-            color: #667eea;
-            font-weight: 600;
-        }
-        
-        .answer-text h1 { font-size: 2em; border-bottom: 2px solid #667eea; padding-bottom: 5px; }
-        .answer-text h2 { font-size: 1.7em; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
-        .answer-text h3 { font-size: 1.5em; }
-        .answer-text h4 { font-size: 1.3em; }
-        .answer-text h5 { font-size: 1.1em; }
-        .answer-text h6 { font-size: 1em; }
-        
-        .answer-text p {
-            margin-bottom: 15px;
-        }
-        
-        .answer-text strong {
-            font-weight: 600;
-            color: #000;
-        }
-        
-        .answer-text em {
-            font-style: italic;
-            color: #555;
-        }
-        
-        .answer-text code {
-            background: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #c7254e;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .answer-text pre {
-            background: #f4f4f4;
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 15px 0;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .answer-text pre code {
-            background: none;
-            padding: 0;
-            border: none;
-            color: #333;
-            font-size: 0.95em;
-        }
-        
-        .answer-text ul, .answer-text ol {
-            margin-left: 25px;
-            margin-bottom: 15px;
-        }
-        
-        .answer-text li {
-            margin-bottom: 8px;
-            line-height: 1.6;
-        }
-        
-        .answer-text blockquote {
-            border-left: 4px solid #667eea;
-            padding-left: 15px;
-            margin: 15px 0;
-            color: #666;
-            font-style: italic;
-            background: #f9f9f9;
-            padding: 10px 15px;
-            border-radius: 5px;
-        }
-        
-        .answer-text a {
-            color: #667eea;
-            text-decoration: none;
-            border-bottom: 1px solid #667eea;
-        }
-        
-        .answer-text a:hover {
-            color: #764ba2;
-            border-bottom-color: #764ba2;
-        }
-        
-        .answer-text table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 15px 0;
-        }
-        
-        .answer-text table th,
-        .answer-text table td {
-            border: 1px solid #e0e0e0;
-            padding: 10px;
-            text-align: left;
-        }
-        
-        .answer-text table th {
-            background: #f5f5f5;
-            font-weight: 600;
-            color: #667eea;
-        }
-        
-        .answer-text table tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-        
-        .answer-text hr {
-            border: none;
-            border-top: 2px solid #e0e0e0;
-            margin: 20px 0;
-        }
-        
-        .answer-text img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 15px 0;
-        }
-        
-        .collapsible-section {
-            background: var(--bg-primary);
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 0;
-            margin-bottom: 20px;
-            overflow: hidden;
-            transition: var(--transition);
-        }
-        
-        .collapsible-section:hover {
-            border-color: var(--primary-color);
-        }
-        
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 20px 24px;
-            cursor: pointer;
-            user-select: none;
-            transition: var(--transition);
-        }
-        
-        .section-header:hover {
-            background: var(--bg-secondary);
-        }
-        
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.3em;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        
-        .section-title i {
-            color: var(--secondary-color);
-        }
-        
-        .toggle-icon {
-            color: var(--text-secondary);
-            transition: transform 0.3s ease;
-            font-size: 18px;
-        }
-        
-        .toggle-icon.expanded {
-            transform: rotate(180deg);
-        }
-        
-        .section-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease;
-        }
-        
-        .section-content.expanded {
-            max-height: 2000px;
-        }
-        
-        .section-body {
-            padding: 0 24px 24px 24px;
-        }
-        
-        .citation-item {
-            padding: 16px;
-            margin-bottom: 12px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-sm);
-            border-left: 4px solid var(--secondary-color);
-            transition: var(--transition);
-        }
-        
-        .citation-item:hover {
-            background: var(--bg-tertiary);
-            transform: translateX(4px);
-        }
-        
-        .citation-id {
-            font-weight: 600;
-            color: var(--secondary-color);
-            margin-bottom: 6px;
-            font-size: 14px;
-        }
-        
-        .citation-title {
-            color: var(--text-primary);
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-        
-        .citation-authors {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-            margin-top: 4px;
-        }
-        
-        .context-item {
-            padding: 18px;
-            margin-bottom: 12px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-sm);
-            line-height: 1.7;
-            color: var(--text-primary);
-            border-left: 4px solid var(--primary-color);
-            transition: var(--transition);
-        }
-        
-        .context-item:hover {
-            background: var(--bg-tertiary);
-        }
-        
-        .context-item strong {
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-        
-        .image-section {
-            text-align: center;
-            margin-bottom: 24px;
-            background: var(--bg-primary);
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 24px;
-        }
-        
-        .image-section h3 {
-            margin-bottom: 20px;
-            color: var(--primary-color);
-            font-size: 1.3em;
-            font-weight: 700;
+            top: 8px; /* (64 - 44) / 2 - border adjustment */
+            left: 8px;
+              width: 26px;
+              height: 26px;
+            border-radius: 50%;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Spring-like */
+            z-index: 10;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            
+            /* Light Mode Thumb */
+            background: linear-gradient(145deg, #ffffff 0%, #fefefe 50%, #f8fafc 100%);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 
+                inset 2px 2px 4px rgba(203, 213, 225, 0.3),
+                inset -2px -2px 4px rgba(255, 255, 255, 1),
+                0 4px 12px rgba(0, 0, 0, 0.12);
         }
-        
-        .image-section img {
-            max-width: 100%;
-            height: auto;
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
-            transition: var(--transition);
+
+        .dark .toggle-thumb {
+            transform: translateX(56px);
+            /* Dark Mode Thumb */
+            background: linear-gradient(145deg, #64748b 0%, #475569 50%, #334155 100%);
+            border: 2px solid rgba(148, 163, 184, 0.3);
+            box-shadow: 
+                inset 2px 2px 4px rgba(100, 116, 139, 0.4),
+                inset -2px -2px 4px rgba(0, 0, 0, 0.8),
+                0 4px 12px rgba(0, 0, 0, 0.5);
         }
-        
-        .image-section img:hover {
-            transform: scale(1.02);
-            box-shadow: var(--shadow-xl);
-        }
-        
-        /* Loading States */
-        .loading-container {
-            display: none;
-            margin-bottom: 30px;
-        }
-        
-        .loading-container.visible {
-            display: block;
-        }
-        
-        .loading-card {
-            background: var(--bg-primary);
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 24px;
-            margin-bottom: 16px;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        
-        .loading-card.completed {
-            border-color: var(--success-color);
-            background: rgba(16, 185, 129, 0.05);
-            animation: none;
-        }
-        
-        .loading-card.error {
-            border-color: var(--error-color);
-            background: rgba(239, 68, 68, 0.05);
-            animation: none;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.2);
-            }
-            50% {
-                box-shadow: 0 0 0 8px rgba(102, 126, 234, 0);
-            }
-        }
-        
-        .loading-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .loading-icon {
+
+        .toggle-icon {
             font-size: 20px;
-            color: var(--primary-color);
+            transition: color 0.3s ease;
         }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        @keyframes particle-explode {
+            0% { transform: scale(0); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: scale(8); opacity: 0; }
+        }
+
+        /* Prose Customization */
+        .prose { color: #1e293b; }
+        .dark .prose { color: #fffffe; }
         
-        .loading-icon.spinning {
-            animation: spin 1s linear infinite;
-        }
+        .prose strong { color: #008a8a; }
+        .dark .prose strong { color: #00d4d4; }
         
-        .loading-icon.completed {
-            color: var(--success-color);
-        }
+        .prose a { color: #7f5af0; text-decoration: none; border-bottom: 1px solid #7f5af0; }
+        .prose a:hover { color: #a78bfa; border-color: #a78bfa; }
         
-        .loading-icon.error {
-            color: var(--error-color);
-        }
+        .prose code { padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
+        .prose code { background: rgba(0, 0, 0, 0.05); color: #d97706; }
+        .dark .prose code { background: rgba(249, 168, 38, 0.1); color: #f9a826; }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .prose pre { padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        .prose pre { background: #f1f5f9; border: 1px solid #e2e8f0; }
+        .dark .prose pre { background: #0f0f11; border: 1px solid #242629; }
         
-        .loading-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-primary);
-            flex: 1;
-        }
+        .prose h1, .prose h2, .prose h3 { color: #0f172a; }
+        .dark .prose h1, .dark .prose h2, .dark .prose h3 { color: #fffffe; }
         
-        .loading-status {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
-        .loading-status.completed {
-            color: var(--success-color);
-            font-weight: 500;
-        }
-        
-        .loading-status.error {
-            color: var(--error-color);
-            font-weight: 500;
-        }
-        
-        .loading-progress {
-            margin-top: 12px;
-        }
-        
-        .progress-bar {
-            height: 4px;
-            background: var(--bg-tertiary);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            border-radius: 2px;
-            transition: width 0.3s ease;
-            animation: shimmer 1.5s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% {
-                transform: translateX(-100%);
-            }
-            100% {
-                transform: translateX(100%);
-            }
-        }
-        
-        .progress-fill.completed {
-            animation: none;
-            background: var(--success-color);
-        }
-        
-        .error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 2px solid var(--error-color);
-            color: var(--error-color);
-            padding: 20px 24px;
-            border-radius: var(--radius-md);
-            margin-bottom: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: shake 0.5s ease;
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-        
-        .error i {
-            font-size: 20px;
-        }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 24px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-md);
-            margin-top: 24px;
-            border: 1px solid var(--border-color);
-        }
-        
-        .stat-item {
-            text-align: center;
-            padding: 16px;
-            background: var(--bg-primary);
-            border-radius: var(--radius-sm);
-            transition: var(--transition);
-            cursor: default;
-        }
-        
-        .stat-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .stat-icon {
-            font-size: 28px;
-            margin-bottom: 8px;
-            color: var(--primary-color);
-        }
-        
-        .stat-value {
-            font-size: 2.2em;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.95em;
-            font-weight: 500;
-        }
+        .prose blockquote { border-left: 4px solid #00b8b8; padding-left: 1rem; font-style: italic; }
+        .prose blockquote { color: #64748b; }
+        .dark .prose blockquote { color: #94a1b2; }
+
+        /* SVG Filters */
+        .svg-filters { position: absolute; width: 0; height: 0; pointer-events: none; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="header-content">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px;">
-                    <img src="/static/public/logo.png" alt="RAGroot Logo" style="width: 80px; height: 80px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
-                    <h1 style="margin: 0;">RAGroot | Academic Research Assistant</h1>
-                </div>
-                <p>Ask questions about academic papers powered by AI</p>
-            </div>
-        </div>
-        
-        <div class="content">
-            <div class="query-section">
-                <div class="input-group">
-                    <div class="input-wrapper">
-                        <i class="fas fa-search input-icon"></i>
-                        <input 
-                            type="text" 
-                            id="queryInput" 
-                            placeholder="Ask a question about research papers..."
-                            onkeypress="handleKeyPress(event)"
-                            aria-label="Search query"
-                            autocomplete="off"
-                        >
-                    </div>
-                    <button id="submitBtn" onclick="submitQuery()" aria-label="Submit query">
-                        <i class="fas fa-paper-plane"></i>
-                        <span>Search</span>
-                    </button>
-                </div>
-                
-                <div class="options">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="imageToggle">
-                        <label for="imageToggle">
-                            <i class="fas fa-image"></i>
-                            Generate image
-                        </label>
-                    </div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="forceCpuToggle">
-                        <label for="forceCpuToggle" title="Force CPU inference for testing. Note: If local image provider is selected, image generation will not work (only external APIs)">
-                            <i class="fas fa-microchip"></i>
-                            Force CPU
-                        </label>
-                        <span style="font-size: 12px; color: var(--text-secondary); margin-left: 5px;" title="Use CPU for inference testing. Local image generation requires GPU and will not work with CPU mode.">
-                            <i class="fas fa-info-circle"></i>
-                        </span>
-                    </div>
-                    <div class="select-wrapper">
-                        <label for="topK"><i class="fas fa-list-ol"></i> Results:</label>
-                        <select id="topK" aria-label="Number of results">
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3" selected>3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                            <option value="7">7</option>
-                            <option value="8">8</option>
-                            <option value="9">9</option>
-                            <option value="10">10</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="image-provider-section" style="margin-top: 16px; padding: 16px 20px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
-                        <div class="select-wrapper">
-                            <label for="imageProvider"><i class="fas fa-palette"></i> Image Provider:</label>
-                            <select id="imageProvider" aria-label="Image generation provider" onchange="toggleApiKeyInput()">
-                                <option value="local">Local (SDXL)</option>
-                                <option value="openai">OpenAI API</option>
-                                <option value="pollinations">Pollinations.ai</option>
-                            </select>
-                        </div>
-                        <div id="apiKeyContainer" class="input-wrapper" style="display: none; flex: 1; min-width: 200px;">
-                            <label for="apiKey" style="font-weight: 500; margin-right: 8px;"><i class="fas fa-key"></i> API Key:</label>
-                            <input type="password" id="apiKey" placeholder="Enter OpenAI API key..." style="flex: 1; padding: 8px 12px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px;" autocomplete="off">
-                        </div>
-                    </div>
-                    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Note:</strong> Local provider requires GPU. If Force CPU is enabled, only external APIs (OpenAI/Pollinations) will work.
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Separate Loading States -->
-            <div id="loadingContainer" class="loading-container">
-                <!-- Query Loading Card -->
-                <div id="queryLoading" class="loading-card" style="display: none;">
-                    <div class="loading-header">
-                        <i id="queryIcon" class="fas fa-search loading-icon spinning"></i>
-                        <div class="loading-title">Processing Query</div>
-                        <div id="queryStatus" class="loading-status">Searching documents...</div>
-                    </div>
-                    <div class="loading-progress">
-                        <div class="progress-bar">
-                            <div id="queryProgress" class="progress-fill" style="width: 100%;"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Image Generation Loading Card -->
-                <div id="imageLoading" class="loading-card" style="display: none;">
-                    <div class="loading-header">
-                        <i id="imageIcon" class="fas fa-palette loading-icon spinning"></i>
-                        <div class="loading-title">Generating Image</div>
-                        <div id="imageStatus" class="loading-status">Creating visualization...</div>
-                    </div>
-                    <div class="loading-progress">
-                        <div class="progress-bar">
-                            <div id="imageProgress" class="progress-fill" style="width: 100%;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="error" class="error" style="display: none;">
-                <i class="fas fa-exclamation-circle"></i>
-                <span id="errorText"></span>
-            </div>
-            
-            <div id="results" class="results-section">
-                <div id="imageContainer" class="image-section" style="display: none;"></div>
-                
-                <div class="answer-box">
-                    <h3><i class="fas fa-comment-dots"></i> Answer</h3>
-                    <div id="answer" class="answer-text"></div>
-                </div>
-                
-                <div class="collapsible-section">
-                    <div class="section-header" onclick="toggleSection('citations')">
-                        <div class="section-title">
-                            <i class="fas fa-book"></i>
-                            <span>Citations</span>
-                            <span id="citationCount" style="font-size: 0.8em; color: var(--text-secondary); font-weight: 400;"></span>
-                        </div>
-                        <i id="citationsToggle" class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div id="citationsContent" class="section-content">
-                        <div class="section-body">
-                            <div id="citations"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="collapsible-section">
-                    <div class="section-header" onclick="toggleSection('context')">
-                        <div class="section-title">
-                            <i class="fas fa-file-alt"></i>
-                            <span>Retrieved Context</span>
-                            <span id="contextCount" style="font-size: 0.8em; color: var(--text-secondary); font-weight: 400;"></span>
-                        </div>
-                        <i id="contextToggle" class="fas fa-chevron-down toggle-icon"></i>
-                    </div>
-                    <div id="contextContent" class="section-content">
-                        <div class="section-body">
-                            <div id="context"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="stats">
-                <div class="stat-item">
-                    <div class="stat-icon"><i class="fas fa-database"></i></div>
-                    <div class="stat-value" id="docCount">-</div>
-                    <div class="stat-label">Indexed Documents</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon"><i class="fas fa-vector-square"></i></div>
-                    <div class="stat-value" id="indexSize">-</div>
-                    <div class="stat-label">Index Vectors</div>
-                </div>
-            </div>
-        </div>
-    </div>
+<body class="antialiased min-h-screen flex flex-col bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
     
+    <!-- SVG Filters for Film Grain -->
+    <svg class="svg-filters">
+        <defs>
+            <filter id="grain-light">
+                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" />
+                <feColorMatrix in="noise" type="saturate" values="0" result="desaturatedNoise" />
+                <feComponentTransfer in="desaturatedNoise" result="lightGrain">
+                    <feFuncA type="linear" slope="0.3" />
+                </feComponentTransfer>
+                <feBlend in="SourceGraphic" in2="lightGrain" mode="overlay" />
+            </filter>
+            <filter id="grain-dark">
+                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" />
+                <feColorMatrix in="noise" type="saturate" values="0" result="desaturatedNoise" />
+                <feComponentTransfer in="desaturatedNoise" result="darkGrain">
+                    <feFuncA type="linear" slope="0.5" />
+                </feComponentTransfer>
+                <feBlend in="SourceGraphic" in2="darkGrain" mode="overlay" />
+            </filter>
+        </defs>
+    </svg>
+
+    <div id="canvas-container"></div>
+
+    <!-- Main Layout -->
+    <div class="container mx-auto px-4 py-8 max-w-5xl flex-grow z-10 relative">
+        
+        <!-- Top Bar with Theme Toggle -->
+        <div class="absolute top-4 right-4 z-50">
+            <div class="theme-toggle-container" id="themeToggle" role="switch" aria-label="Toggle theme">
+                <!-- Background Icons -->
+                <div class="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
+                    <i class="fas fa-sun text-amber-600 dark:text-yellow-100 opacity-80"></i>
+                    <i class="fas fa-moon text-slate-700 dark:text-yellow-100 opacity-80"></i>
+                </div>
+                
+                <!-- Thumb -->
+                <div class="toggle-thumb">
+                    <i class="fas fa-sun text-amber-500 dark:hidden toggle-icon"></i>
+                    <i class="fas fa-moon text-yellow-200 hidden dark:block toggle-icon"></i>
+                    <!-- Particle Container -->
+                    <div id="particleContainer" class="absolute inset-0 flex items-center justify-center pointer-events-none"></div>
+                </div>
+                
+                <!-- Overlays for depth -->
+                <div class="absolute inset-0 rounded-full pointer-events-none" style="background: radial-gradient(ellipse at top, rgba(255,255,255,0.4) 0%, transparent 50%); mix-blend-mode: overlay;"></div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="mb-12 text-center space-y-4 animate-fade-in-down mt-12">
+            <div class="flex items-center justify-center gap-4 mb-2">
+                <div class="relative group">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                    <img src="/static/public/logo.png" alt="Logo" class="relative w-20 h-20 rounded-xl transform transition duration-500 hover:scale-125">
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-dark to-accent dark:from-primary-light dark:to-accent-light tracking-tight">
+                    RAGroot
+                </h1>
+            </div>
+            <p class="text-muted-light dark:text-muted-dark text-lg max-w-2xl mx-auto font-light">
+                Your AI-powered academic research assistant. Ask questions, explore citations, and visualize concepts.
+            </p>
+        </header>
+
+        <!-- Search Section -->
+        <div class="glass-panel rounded-2xl p-6 mb-8 shadow-2xl">
+            <form class="flex flex-col md:flex-row gap-4 mb-6" onsubmit="event.preventDefault(); submitQuery();" autocomplete="off">
+                <div class="relative flex-grow group">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-muted-light dark:text-muted-dark group-focus-within:text-primary transition-colors"></i>
+                    </div>
+                    <input type="text" id="queryInput" name="query"
+                        class="w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-light dark:text-text-dark text-lg rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent block w-full pl-12 py-2 px-4 transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-600" 
+                        placeholder="What would you like to know about the research?"
+                        autocomplete="off">
+                </div>
+                <button type="submit" id="submitBtn" 
+                    class="bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-white dark:text-dark-bg font-bold py-2 px-4 rounded-2xl shadow-lg transform transition hover:-translate-y-1 hover:shadow-primary/20 flex items-center justify-center gap-2 min-w-[120px]">
+                    <span>Ask AI</span>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+
+            <!-- Options -->
+            <div class="flex flex-wrap items-center gap-6 text-sm text-muted-light dark:text-muted-dark border-t border-gray-200 dark:border-gray-700/50 pt-4">
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
+                        <input type="checkbox" id="imageToggle" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <span><i class="fas fa-image mr-1"></i> Generate Image</span>
+                    </label>
+                </div>
+
+                <label class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
+                    <input type="checkbox" id="forceCpuToggle" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    <span><i class="fas fa-microchip mr-1"></i> Force CPU</span>
+                </label>
+
+                <div class="flex items-center gap-2 ml-auto">
+                    <i class="fas fa-list-ol"></i>
+                    <span>Results:</span>
+                    <select id="topK" class="bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-1.5">
+                        <option value="3" selected>3</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Image Provider Settings (Hidden by default) -->
+             <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex flex-wrap gap-4 items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-palette text-muted-light dark:text-muted-dark"></i>
+                    <select id="imageProvider" onchange="toggleApiKeyInput()" class="bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-2">
+                        <option value="local">Local (SDXL)</option>
+                        <option value="openai">OpenAI API</option>
+                        <option value="pollinations">Pollinations.ai</option>
+                    </select>
+                </div>
+                <div id="apiKeyContainer" class="hidden flex-grow max-w-md">
+                    <input type="password" id="apiKey" placeholder="Enter OpenAI API Key" class="w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-2">
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingContainer" class="hidden space-y-4">
+            <div class="glass-panel rounded-xl p-6 flex items-center gap-4 animate-pulse">
+                <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <div class="flex-grow">
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
+                    <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="hidden glass-panel border-l-4 border-red-500 rounded-xl p-6 mb-8 flex items-center gap-4 text-red-500 dark:text-red-400">
+            <i class="fas fa-exclamation-circle text-2xl"></i>
+            <span id="errorText">Something went wrong.</span>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="hidden space-y-8">
+            
+            <!-- Generated Image -->
+            <div id="imageContainer" class="hidden glass-panel rounded-2xl p-2 overflow-hidden">
+                <!-- Image injected here -->
+            </div>
+
+            <!-- Answer Card -->
+            <div class="glass-panel rounded-2xl p-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-accent"></div>
+                <h3 class="text-2xl font-bold text-primary-dark dark:text-primary-light mb-6 flex items-center gap-3">
+                    <i class="fas fa-robot"></i> AI Analysis
+                </h3>
+                <div id="answer" class="prose prose-lg max-w-none leading-relaxed">
+                    <!-- Answer content -->
+                </div>
+            </div>
+
+            <!-- Citations & Context Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Citations -->
+                <div class="glass-panel rounded-xl p-6">
+                    <h4 class="text-xl font-semibold text-secondary mb-4 flex items-center gap-2">
+                        <i class="fas fa-book-open"></i> Sources
+                    </h4>
+                    <div id="citations" class="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Citations list -->
+                    </div>
+                </div>
+
+                <!-- Context -->
+                <div class="glass-panel rounded-xl p-6">
+                    <h4 class="text-xl font-semibold text-tertiary mb-4 flex items-center gap-2">
+                        <i class="fas fa-layer-group"></i> Context
+                    </h4>
+                    <div id="context" class="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Context list -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Footer -->
+        <footer class="mt-12 border-t border-gray-200 dark:border-gray-800 pt-8 pb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                    <div class="text-2xl font-bold text-primary" id="docCount">-</div>
+                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Documents</div>
+                </div>
+                <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                    <div class="text-2xl font-bold text-accent" id="indexSize">-</div>
+                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Vectors</div>
+                </div>
+                 <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                    <div class="text-2xl font-bold text-secondary">v2.0</div>
+                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Version</div>
+                </div>
+                 <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                    <div class="text-2xl font-bold text-tertiary">Ready</div>
+                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Status</div>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Scripts -->
     <script>
-        // Configure marked.js for markdown rendering
+        // --- Theme Management ---
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const particleContainer = document.getElementById('particleContainer');
+        
+        // Check local storage or system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+
+        // Toggle Function
+        themeToggle.addEventListener('click', () => {
+            const isDark = html.classList.contains('dark');
+            
+            // Animate Particles
+            createParticles(isDark);
+
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.theme = 'light';
+                updateThreeJsTheme('light');
+            } else {
+                html.classList.add('dark');
+                localStorage.theme = 'dark';
+                updateThreeJsTheme('dark');
+            }
+        });
+
+        function createParticles(isDark) {
+            // Clear existing
+            particleContainer.innerHTML = '';
+            
+            const color = isDark ? 'rgba(251, 191, 36, 0.7)' : 'rgba(147, 197, 253, 0.5)'; // Amber for light mode target, Blue for dark mode target
+            
+            for (let i = 0; i < 3; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = '10px';
+                particle.style.height = '10px';
+                particle.style.background = `radial-gradient(circle, ${color} 0%, transparent 70%)`;
+                particle.style.animation = `particle-explode ${0.6 + i * 0.1}s ease-out forwards`;
+                particle.style.animationDelay = `${i * 0.1}s`;
+                
+                // Add grain overlay to particle
+                const grain = document.createElement('div');
+                grain.style.position = 'absolute';
+                grain.style.inset = '0';
+                grain.style.borderRadius = '50%';
+                grain.style.opacity = '0.4';
+                grain.style.mixBlendMode = 'overlay';
+                grain.style.filter = 'url(#grain-light)'; // Reuse filter
+                
+                particle.appendChild(grain);
+                particleContainer.appendChild(particle);
+            }
+            
+            // Cleanup
+            setTimeout(() => {
+                particleContainer.innerHTML = '';
+            }, 1500);
+        }
+
+        // --- Three.js Background ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Particles
+        const geometry = new THREE.BufferGeometry();
+        const particlesCount = 700;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 15; // Spread
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        // Helper to create circle texture
+        function createCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.beginPath();
+            ctx.arc(16, 16, 14, 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Material
+        const material = new THREE.PointsMaterial({
+            size: 0.05,
+            color: 0x00b8b8, // Default Primary Teal
+            transparent: true,
+            opacity: 0.8,
+            map: createCircleTexture(),
+            depthWrite: false,
+        });
+
+        // Mesh
+        const particlesMesh = new THREE.Points(geometry, material);
+        scene.add(particlesMesh);
+
+        camera.position.z = 3;
+
+        // Mouse interaction
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = event.clientX / window.innerWidth - 0.5;
+            mouseY = event.clientY / window.innerHeight - 0.5;
+        });
+
+        // Animation Loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+
+            particlesMesh.rotation.y = elapsedTime * 0.05;
+            particlesMesh.rotation.x = mouseY * 0.1;
+            particlesMesh.rotation.y += mouseX * 0.1;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Update Three.js Theme
+        function updateThreeJsTheme(theme) {
+            if (theme === 'light') {
+                material.color.setHex(0x008a8a); // Darker teal for light mode visibility
+                material.opacity = 0.6;
+                document.getElementById('canvas-container').style.opacity = '0.4';
+            } else {
+                material.color.setHex(0x00b8b8); // Bright teal for dark mode
+                material.opacity = 0.8;
+                document.getElementById('canvas-container').style.opacity = '0.6';
+            }
+        }
+        
+        // Initialize Three.js theme
+        updateThreeJsTheme(html.classList.contains('dark') ? 'dark' : 'light');
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Application Logic ---
+
+        // Markdown Configuration
         marked.setOptions({
             breaks: true,
             gfm: true,
             headerIds: true,
             mangle: false,
-            sanitize: false,
-            smartLists: true,
-            smartypants: true
+            sanitize: false
         });
-        
-        // Escape HTML to prevent XSS but preserve LaTeX delimiters
+
+        // Helper: Escape HTML
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
-        
-        // Render markdown with LaTeX support
+
+        // Helper: Render Markdown + LaTeX
         function renderMarkdownWithLatex(text) {
-            // First, protect LaTeX expressions from markdown parser
+            // Protect LaTeX
             const latexBlocks = [];
-            let protectedText = text;
-            
-            // Protect display math ($$...$$)
-            protectedText = protectedText.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
+            let protectedText = text.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
                 latexBlocks.push(match);
                 return `___LATEX_BLOCK_${latexBlocks.length - 1}___`;
-            });
-            
-            // Protect inline math ($...$)
-            protectedText = protectedText.replace(/\$[^\$\n]+?\$/g, (match) => {
+            }).replace(/\$[^\$\n]+?\$/g, (match) => {
                 latexBlocks.push(match);
                 return `___LATEX_INLINE_${latexBlocks.length - 1}___`;
             });
-            
-            // Parse markdown
+
             let html = marked.parse(protectedText);
-            
-            // Restore LaTeX expressions
+
+            // Restore LaTeX
             latexBlocks.forEach((latex, index) => {
                 html = html.replace(`___LATEX_BLOCK_${index}___`, latex);
                 html = html.replace(`___LATEX_INLINE_${index}___`, latex);
             });
-            
+
             return html;
         }
-        
-        // Load stats on page load
+
+        // UI Toggles
+        function toggleApiKeyInput() {
+            const provider = document.getElementById('imageProvider').value;
+            const container = document.getElementById('apiKeyContainer');
+            if (provider === 'openai') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        // Load Stats
         async function loadStats() {
             try {
                 const response = await fetch('/stats');
                 const data = await response.json();
                 document.getElementById('docCount').textContent = data.total_documents;
-                document.getElementById('indexSize').textContent = data.index_size.vectors;
+                document.getElementById('indexSize').textContent = data.index_size.vectors || data.index_size; // Handle different response formats
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
         }
-        
-        // Toggle collapsible sections
-        function toggleSection(sectionName) {
-            const content = document.getElementById(sectionName + 'Content');
-            const toggle = document.getElementById(sectionName + 'Toggle');
-            
-            content.classList.toggle('expanded');
-            toggle.classList.toggle('expanded');
-        }
-        
-        // Show loading state for query
-        function showQueryLoading() {
-            const container = document.getElementById('loadingContainer');
-            const card = document.getElementById('queryLoading');
-            const icon = document.getElementById('queryIcon');
-            const status = document.getElementById('queryStatus');
-            
-            container.classList.add('visible');
-            card.style.display = 'block';
-            card.classList.remove('completed', 'error');
-            icon.className = 'fas fa-search loading-icon spinning';
-            status.textContent = 'Searching documents...';
-            status.className = 'loading-status';
-        }
-        
-        // Show completed state for query
-        function showQueryCompleted() {
-            const card = document.getElementById('queryLoading');
-            const icon = document.getElementById('queryIcon');
-            const status = document.getElementById('queryStatus');
-            const progress = document.getElementById('queryProgress');
-            
-            card.classList.add('completed');
-            icon.className = 'fas fa-check-circle loading-icon completed';
-            status.textContent = 'Completed';
-            status.className = 'loading-status completed';
-            progress.classList.add('completed');
-        }
-        
-        // Show error state for query
-        function showQueryError(message) {
-            const card = document.getElementById('queryLoading');
-            const icon = document.getElementById('queryIcon');
-            const status = document.getElementById('queryStatus');
-            
-            card.classList.add('error');
-            icon.className = 'fas fa-times-circle loading-icon error';
-            status.textContent = message || 'Failed';
-            status.className = 'loading-status error';
-        }
-        
-        // Show loading state for image
-        function showImageLoading() {
-            const card = document.getElementById('imageLoading');
-            const icon = document.getElementById('imageIcon');
-            const status = document.getElementById('imageStatus');
-            
-            card.style.display = 'block';
-            card.classList.remove('completed', 'error');
-            icon.className = 'fas fa-palette loading-icon spinning';
-            status.textContent = 'Creating visualization...';
-            status.className = 'loading-status';
-        }
-        
-        // Show completed state for image
-        function showImageCompleted() {
-            const card = document.getElementById('imageLoading');
-            const icon = document.getElementById('imageIcon');
-            const status = document.getElementById('imageStatus');
-            const progress = document.getElementById('imageProgress');
-            
-            card.classList.add('completed');
-            icon.className = 'fas fa-check-circle loading-icon completed';
-            status.textContent = 'Completed';
-            status.className = 'loading-status completed';
-            progress.classList.add('completed');
-        }
-        
-        // Show error state for image
-        function showImageError(message) {
-            const card = document.getElementById('imageLoading');
-            const icon = document.getElementById('imageIcon');
-            const status = document.getElementById('imageStatus');
-            
-            card.classList.add('error');
-            icon.className = 'fas fa-times-circle loading-icon error';
-            status.textContent = message || 'Failed';
-            status.className = 'loading-status error';
-        }
-        
-        // Hide all loading states
-        function hideAllLoading() {
-            const container = document.getElementById('loadingContainer');
-            setTimeout(() => {
-                container.classList.remove('visible');
-                document.getElementById('queryLoading').style.display = 'none';
-                document.getElementById('imageLoading').style.display = 'none';
-            }, 2000); // Keep visible for 2 seconds after completion
-        }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
+        loadStats();
+
+        // Key Press Handler - Removed as form handles submit
+        /*
+        document.getElementById('queryInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
                 submitQuery();
             }
-        }
-        
-        function toggleApiKeyInput() {
-            const provider = document.getElementById('imageProvider').value;
-            const apiKeyContainer = document.getElementById('apiKeyContainer');
-            
-            if (provider === 'openai') {
-                apiKeyContainer.style.display = 'flex';
-            } else {
-                apiKeyContainer.style.display = 'none';
-            }
-        }
-        
+        });
+        */
+
+        // Main Query Function
         async function submitQuery() {
-            const query = document.getElementById('queryInput').value.trim();
-            if (!query) {
-                showError('Please enter a question');
-                return;
-            }
+            const queryInput = document.getElementById('queryInput');
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingContainer = document.getElementById('loadingContainer');
+            const resultsContainer = document.getElementById('results');
+            const errorContainer = document.getElementById('error');
+            const answerDiv = document.getElementById('answer');
+            const citationsDiv = document.getElementById('citations');
+            const contextDiv = document.getElementById('context');
+            const imageContainer = document.getElementById('imageContainer');
+
+            // Reset UI
+            resultsContainer.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+            imageContainer.classList.add('hidden');
+            imageContainer.innerHTML = '';
+            answerDiv.innerHTML = '';
+            citationsDiv.innerHTML = '';
+            contextDiv.innerHTML = '';
             
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            loadingContainer.classList.remove('hidden');
+
             const generateImage = document.getElementById('imageToggle').checked;
             const topK = parseInt(document.getElementById('topK').value);
             const forceCpu = document.getElementById('forceCpuToggle').checked;
             const imageProvider = document.getElementById('imageProvider').value;
             const apiKey = document.getElementById('apiKey').value.trim();
-            
-            // Reset UI
-            document.getElementById('results').classList.remove('visible');
-            document.getElementById('error').style.display = 'none';
-            document.getElementById('submitBtn').disabled = true;
-            
-            // Show query loading
-            showQueryLoading();
-            
-            // Validate API key if OpenAI is selected and image generation is enabled
-            if (generateImage && imageProvider === 'openai' && !apiKey) {
-                showError('Please provide an OpenAI API key when using OpenAI image provider');
-                return;
-            }
-            
+
             try {
-                // Fetch answer
-                const response = await fetch('/answer', {
+                // Start Streaming
+                resultsContainer.classList.remove('hidden');
+                answerDiv.innerHTML = '<span class="animate-pulse text-primary">Thinking...</span>';
+
+                const response = await fetch('/stream', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         query: query,
-                        generate_image: false,
+                        generate_image: false, // Handled separately
                         top_k: topK,
                         force_cpu: forceCpu
                     })
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullAnswer = '';
+                let isFirstToken = true;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'token') {
+                                    if (isFirstToken) {
+                                        answerDiv.innerHTML = '';
+                                        isFirstToken = false;
+                                        loadingContainer.classList.add('hidden'); // Hide loading once tokens start
+                                    }
+                                    fullAnswer += data.content;
+                                    answerDiv.innerHTML = renderMarkdownWithLatex(fullAnswer);
+                                } else if (data.type === 'citations') {
+                                    renderCitations(data.content);
+                                } else if (data.type === 'context') {
+                                    renderContext(data.content);
+                                } else if (data.type === 'complete') {
+                                    // Final render
+                                    if (window.MathJax) MathJax.typesetPromise([answerDiv]);
+                                    
+                                    // Trigger Image Generation if requested
+                                    if (generateImage) {
+                                        generateImageAsync(fullAnswer, query, imageProvider, apiKey, forceCpu);
+                                    }
+                                } else if (data.type === 'error') {
+                                    throw new Error(data.content);
+                                }
+                            } catch (e) {
+                                console.warn('Parse error:', e);
+                            }
+                        }
+                    }
                 }
-                
-                const data = await response.json();
-                
-                // Show query completed
-                showQueryCompleted();
-                
-                // Display results
-                displayResults(data);
-                
-                // Generate image if requested (non-blocking)
-                if (generateImage) {
-                    showImageLoading();
-                    generateImageAsync(data.answer, query, imageProvider, apiKey, forceCpu);
-                } else {
-                    // Only hide loading if no image generation
-                    hideAllLoading();
-                }
-                
+
             } catch (error) {
-                console.error('Error:', error);
-                showQueryError('Query failed');
-                showError('Error: ' + error.message);
-                // Only hide loading if no image generation was requested
-                if (!generateImage) {
-                    hideAllLoading();
-                }
+                console.error(error);
+                loadingContainer.classList.add('hidden');
+                errorContainer.classList.remove('hidden');
+                document.getElementById('errorText').textContent = error.message || 'An error occurred while processing your request.';
             } finally {
-                document.getElementById('submitBtn').disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
-        
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            const errorText = document.getElementById('errorText');
-            errorText.textContent = message;
-            errorDiv.style.display = 'flex';
+
+        function renderCitations(citations) {
+            const container = document.getElementById('citations');
+            container.innerHTML = '';
+            if (citations.length === 0) {
+                container.innerHTML = '<p class="text-muted-light dark:text-muted-dark italic">No citations found.</p>';
+                return;
+            }
+            citations.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'bg-surface-light/50 dark:bg-surface-dark/50 p-3 rounded border-l-2 border-secondary hover:bg-surface-light dark:hover:bg-surface-dark transition-colors';
+                div.innerHTML = `
+                    <div class="text-xs text-secondary font-bold mb-1">[${i+1}] ${escapeHtml(c.doc_id)}</div>
+                    <div class="text-sm font-medium text-text-light dark:text-text-dark">${escapeHtml(c.title)}</div>
+                    <div class="text-xs text-muted-light dark:text-muted-dark mt-1">${escapeHtml(c.authors || 'Unknown')}</div>
+                `;
+                container.appendChild(div);
+            });
         }
-        
-        async function generateImageAsync(prompt, query, imageProvider, apiKey, forceCpu) {
-            const imageContainer = document.getElementById('imageContainer');
-            imageContainer.style.display = 'none';
-            
+
+        function renderContext(contexts) {
+            const container = document.getElementById('context');
+            container.innerHTML = '';
+            if (contexts.length === 0) {
+                container.innerHTML = '<p class="text-muted-light dark:text-muted-dark italic">No context retrieved.</p>';
+                return;
+            }
+            contexts.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'bg-surface-light/50 dark:bg-surface-dark/50 p-3 rounded border-l-2 border-tertiary hover:bg-surface-light dark:hover:bg-surface-dark transition-colors text-sm text-text-light dark:text-text-dark leading-relaxed';
+                div.innerHTML = `<span class="text-tertiary font-bold mr-2">Doc ${i+1}:</span> ${escapeHtml(c)}`;
+                container.appendChild(div);
+            });
+        }
+
+        async function generateImageAsync(prompt, query, provider, apiKey, forceCpu) {
+            const container = document.getElementById('imageContainer');
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-muted-light dark:text-muted-dark">
+                    <i class="fas fa-circle-notch fa-spin text-3xl text-primary mb-3"></i>
+                    <p>Generating visualization...</p>
+                </div>
+            `;
+
             try {
-                const requestBody = {
-                    prompt: prompt,
-                    query: query,
-                    image_provider: imageProvider,
-                    force_cpu: forceCpu
-                };
-                
-                // Only include API key if it's provided
-                if (apiKey) {
-                    requestBody.api_key = apiKey;
-                }
-                
                 const response = await fetch('/generate-image', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        query: query,
+                        image_provider: provider,
+                        api_key: apiKey,
+                        force_cpu: forceCpu
+                    })
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
+
                 const data = await response.json();
-                
+
                 if (data.image_url) {
-                    imageContainer.innerHTML = `
-                        <h3><i class="fas fa-palette"></i> Generated Image</h3>
-                        <img src="${data.image_url}" alt="Generated visualization" onerror="this.style.display='none'">
+                    container.innerHTML = `
+                        <div class="relative group">
+                            <img src="${data.image_url}" alt="Generated Image" class="w-full rounded-xl shadow-lg transform transition duration-500 group-hover:scale-[1.01]">
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <p class="text-white text-sm"><i class="fas fa-magic mr-2"></i>AI Generated Visualization</p>
+                            </div>
+                        </div>
                     `;
-                    imageContainer.style.display = 'block';
-                    showImageCompleted();
                 } else {
-                    imageContainer.innerHTML = `
-                        <h3><i class="fas fa-exclamation-triangle"></i> Image Generation Unavailable</h3>
-                        <p style="color: var(--text-secondary);">${data.error || 'Could not generate image'}</p>
-                    `;
-                    imageContainer.style.display = 'block';
-                    showImageError('Unavailable');
+                    throw new Error(data.error || 'Image generation failed');
                 }
             } catch (error) {
-                console.error('Image generation error:', error);
-                imageContainer.innerHTML = `
-                    <h3><i class="fas fa-exclamation-triangle"></i> Image Generation Failed</h3>
-                    <p style="color: var(--text-secondary);">Error: ${error.message}</p>
+                container.innerHTML = `
+                    <div class="p-4 bg-red-100 dark:bg-red-900/20 border border-red-500/50 rounded-xl text-red-500 dark:text-red-400 text-center text-sm">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Image generation unavailable: ${error.message}
+                    </div>
                 `;
-                imageContainer.style.display = 'block';
-                showImageError('Failed');
-            } finally {
-                // Hide loading states after image generation completes (success or failure)
-                hideAllLoading();
             }
         }
-        
-        function displayResults(data) {
-            // Display answer with markdown and LaTeX rendering
-            const answerDiv = document.getElementById('answer');
-            answerDiv.innerHTML = renderMarkdownWithLatex(data.answer);
-            
-            // Trigger MathJax to process the new content
-            if (window.MathJax) {
-                MathJax.typesetPromise([answerDiv]).catch((err) => console.log('MathJax error:', err));
-            }
-            
-            // Display citations
-            const citationsDiv = document.getElementById('citations');
-            citationsDiv.innerHTML = '';
-            data.citations.forEach((citation, index) => {
-                const citationItem = document.createElement('div');
-                citationItem.className = 'citation-item';
-                const authors = citation.authors || 'Unknown';
-                citationItem.innerHTML = `
-                    <div class="citation-id">[${index + 1}] ID: ${escapeHtml(citation.doc_id)}</div>
-                    <div class="citation-title">${escapeHtml(citation.title)}</div>
-                    <div class="citation-authors">Authors: ${escapeHtml(authors)}</div>
-                `;
-                citationsDiv.appendChild(citationItem);
-            });
-            
-            // Update citation count
-            document.getElementById('citationCount').textContent = `(${data.citations.length})`;
-            
-            // Trigger MathJax for citations
-            if (window.MathJax) {
-                MathJax.typesetPromise([citationsDiv]).catch((err) => console.log('MathJax error:', err));
-            }
-            
-            // Display context
-            const contextDiv = document.getElementById('context');
-            contextDiv.innerHTML = '';
-            data.retrieved_context.forEach((context, index) => {
-                const contextItem = document.createElement('div');
-                contextItem.className = 'context-item';
-                contextItem.innerHTML = `<strong>Document ${index + 1}:</strong> ${escapeHtml(context)}`;
-                contextDiv.appendChild(contextItem);
-            });
-            
-            // Update context count
-            document.getElementById('contextCount').textContent = `(${data.retrieved_context.length})`;
-            
-            // Trigger MathJax for context
-            if (window.MathJax) {
-                MathJax.typesetPromise([contextDiv]).catch((err) => console.log('MathJax error:', err));
-            }
-            
-            // Hide image container initially (image will be loaded asynchronously if requested)
-            const imageContainer = document.getElementById('imageContainer');
-            imageContainer.style.display = 'none';
-            
-            // Show results with animation
-            document.getElementById('results').classList.add('visible');
-            
-            // Auto-expand citations section
-            document.getElementById('citationsContent').classList.add('expanded');
-            document.getElementById('citationsToggle').classList.add('expanded');
-        }
-        
-        // Load stats when page loads
-        loadStats();
     </script>
 </body>
 </html>
