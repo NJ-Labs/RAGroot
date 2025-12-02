@@ -171,8 +171,18 @@ def initialize_system():
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     """Serve the main web UI."""
+    from fastapi import Response
     with open("static/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+        content = f.read()
+    return Response(
+        content=content,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 @app.get("/health")
 async def health_check():
@@ -286,16 +296,23 @@ async def stream_answer(request: QueryRequest):
     if not rag_pipeline:
         raise HTTPException(status_code=503, detail="System not initialized")
     
+    logger.info(f"Starting stream for query: {request.query}")
+    
     async def generate():
         try:
+            chunk_count = 0
             async for chunk in rag_pipeline.stream_answer(
                 query=request.query,
                 top_k=request.top_k
             ):
-                yield f"data: {json.dumps(chunk)}\n\n"
+                chunk_count += 1
+                data = f"data: {json.dumps(chunk)}\n\n"
+                logger.debug(f"Streaming chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
+                yield data
+            logger.info(f"Stream completed with {chunk_count} chunks")
         except Exception as e:
-            logger.error(f"Streaming error: {e}")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.error(f"Streaming error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
     
     return StreamingResponse(
         generate(),
@@ -303,7 +320,8 @@ async def stream_answer(request: QueryRequest):
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
+            "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked"
         }
     )
 

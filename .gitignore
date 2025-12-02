@@ -62,6 +62,7 @@ logs/
 htmlcov/
 tests/
 IntPrep/
+*.err
 
 # Temporary files
 *.tmp
