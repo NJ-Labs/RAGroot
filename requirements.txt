@@ -5,6 +5,9 @@ python-multipart==0.0.6
 aiohttp==3.9.1
 python-dotenv==1.0.0
 
+# Test scripts
+requests>=2.31.0
+
 # Data processing
 pydantic==2.5.3
 numpy==1.24.3

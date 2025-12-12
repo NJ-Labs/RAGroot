@@ -236,7 +236,7 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
             temperature=config.TEMPERATURE,
             top_p=config.TOP_P,
             repeat_penalty=config.REPEAT_PENALTY,
-            stop=["---QUESTION---", "---ANSWER---", "User Question:", "References:", "\nReferences:", "\n\nReferences:"],
+            stop=["Citations", "---CITATIONS---", "---QUESTION---", "---ANSWER---", "User Question:", "References:", "\nReferences:", "\n\nReferences:"],
             stream=True
         ):
             token = chunk['choices'][0]['text']
@@ -246,10 +246,10 @@ IMPORTANT: Your answer should contain ONLY the explanation and inline citations 
                 "content": token
             }
             
-            # Yield control to event loop every token to enable true streaming
+            # Yield control to event loop periodically to keep the server responsive.
             token_count += 1
-            if token_count % 1 == 0:  # Every token
-                await asyncio.sleep(0)  # Yield control to event loop
+            if token_count % 5 == 0:
+                await asyncio.sleep(0)
         
         # Send completion signal
         yield {

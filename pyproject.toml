@@ -30,6 +30,8 @@ dependencies = [
     "llama-cpp-python>=0.3.16",
     "propcache==0.4.1",
     "adapter-transformers>=4.0.0",
+    "requests>=2.31.0",
+    "pytest>=9.0.2",
 ]
 
 [[tool.uv.index]]

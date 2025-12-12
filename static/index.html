@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAGroot - AI Research Assistant</title>
+    <script>
+        // Set theme before any content is rendered to avoid FOUC.
+        (function () {
+            try {
+                var theme = localStorage.getItem('theme');
+                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {
+                // Fallback: do nothing.
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -148,7 +163,7 @@
 
         .toggle-thumb {
             position: absolute;
-            top: 8px; /* (64 - 44) / 2 - border adjustment */
+                        top: 7px; /* (44 - 26) / 2 - 2px border = 7px for vertical centering */
             left: 8px;
               width: 26px;
               height: 26px;
@@ -208,19 +223,16 @@
         .prose a { color: #7f5af0; text-decoration: none; border-bottom: 1px solid #7f5af0; }
         .prose a:hover { color: #a78bfa; border-color: #a78bfa; }
         
-        .prose code { padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
-        .prose code { background: rgba(0, 0, 0, 0.05); color: #d97706; }
+        .prose code { padding: 2px 4px; border-radius: 4px; font-size: 0.9em; background: rgba(0, 0, 0, 0.05); color: #d97706; }
         .dark .prose code { background: rgba(249, 168, 38, 0.1); color: #f9a826; }
         
-        .prose pre { padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
-        .prose pre { background: #f1f5f9; border: 1px solid #e2e8f0; }
+        .prose pre { padding: 1rem; border-radius: 0.5rem; overflow-x: auto; background: #f1f5f9; border: 1px solid #e2e8f0; }
         .dark .prose pre { background: #0f0f11; border: 1px solid #242629; }
         
         .prose h1, .prose h2, .prose h3 { color: #0f172a; }
         .dark .prose h1, .dark .prose h2, .dark .prose h3 { color: #fffffe; }
         
-        .prose blockquote { border-left: 4px solid #00b8b8; padding-left: 1rem; font-style: italic; }
-        .prose blockquote { color: #64748b; }
+        .prose blockquote { border-left: 4px solid #00b8b8; padding-left: 1rem; font-style: italic; color: #64748b; }
         .dark .prose blockquote { color: #94a1b2; }
 
         /* SVG Filters */
@@ -257,7 +269,7 @@
     <div class="container mx-auto px-4 py-8 max-w-5xl flex-grow z-10 relative">
         
         <!-- Top Bar with Theme Toggle -->
-        <div class="absolute top-4 right-4 z-50">
+        <div class="fixed top-4 right-4 z-50">
             <div class="theme-toggle-container" id="themeToggle" role="switch" aria-label="Toggle theme">
                 <!-- Background Icons -->
                 <div class="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
@@ -616,6 +628,19 @@
             return div.innerHTML;
         }
 
+        // Helper: Validate/sanitize same-origin http(s) URLs (prevents javascript: and cross-origin).
+        function sanitizeImageUrl(url) {
+            if (!url || typeof url !== 'string') return null;
+            try {
+                const parsed = new URL(url, window.location.origin);
+                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+                if (parsed.origin !== window.location.origin) return null;
+                return parsed.href;
+            } catch (e) {
+                return null;
+            }
+        }
+
         // Helper: Render Markdown + LaTeX
         function renderMarkdownWithLatex(text) {
             // Protect LaTeX
@@ -844,9 +869,13 @@
                 const data = await response.json();
 
                 if (data.image_url) {
+                    const safeUrl = sanitizeImageUrl(data.image_url);
+                    if (!safeUrl) {
+                        throw new Error('Invalid image URL');
+                    }
                     container.innerHTML = `
                         <div class="relative group">
-                            <img src="${data.image_url}" alt="Generated Image" class="w-full rounded-xl shadow-lg transform transition duration-500 group-hover:scale-[1.01]">
+                            <img src="${escapeHtml(safeUrl)}" alt="Generated Image" class="w-full rounded-xl shadow-lg transform transition duration-500 group-hover:scale-[1.01]">
                             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <p class="text-white text-sm"><i class="fas fa-magic mr-2"></i>AI Generated Visualization</p>
                             </div>
@@ -859,7 +888,7 @@
                 container.innerHTML = `
                     <div class="p-4 bg-red-100 dark:bg-red-900/20 border border-red-500/50 rounded-xl text-red-500 dark:text-red-400 text-center text-sm">
                         <i class="fas fa-exclamation-triangle mr-2"></i>
-                        Image generation unavailable: ${error.message}
+                        Image generation unavailable: ${escapeHtml(error.message)}
                     </div>
                 `;
             }
