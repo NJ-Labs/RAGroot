@@ -69,6 +69,9 @@ IntPrep/
 temp/
 tmp/
 
+# Uploads (local storage for testing)
+uploads/
+
 # Build files
 *.sh
 *.ps1

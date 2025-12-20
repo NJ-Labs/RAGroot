@@ -56,7 +56,7 @@
                         }
                     },
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Geist', 'sans-serif'],
                     },
                     animation: {
                         'fade-in-down': 'fadeInDown 0.5s ease-out',
@@ -72,7 +72,45 @@
             }
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Geist Font - Local */
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Light.woff2') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Medium.woff2') format('woff2');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-SemiBold.woff2') format('woff2');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -80,8 +118,8 @@
     <style>
         body { 
             margin: 0; 
-            overflow-x: hidden; 
-            font-family: 'Inter', sans-serif;
+            overflow: hidden; 
+            font-family: 'Geist', sans-serif;
             transition: background-color 0.5s ease, color 0.5s ease;
         }
         
@@ -97,9 +135,9 @@
         }
 
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark ::-webkit-scrollbar-thumb { background: #242629; }
         ::-webkit-scrollbar-thumb:hover { background: #00b8b8; }
         
@@ -122,11 +160,61 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
 
+        /* RTL Support */
+        [dir="rtl"] {
+            font-family: 'Heebo', 'Geist', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        [dir="rtl"] input,
+        [dir="rtl"] button,
+        [dir="rtl"] select,
+        [dir="rtl"] textarea {
+            font-family: 'Heebo', 'Geist', sans-serif;
+        }
+        
+        /* Sidebar Styles */
+        #rightSidebar {
+            width: 360px;
+            height: 100vh;
+            position: fixed;
+            right: 0;
+            top: 0;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(24px);
+        }
+        
+        .dark #rightSidebar {
+            background: #1a1c1e;
+        }
+        
+        [dir="rtl"] #rightSidebar {
+            right: auto;
+            left: 0;
+            border-left: none;
+            border-right: 1px solid rgba(148, 161, 178, 0.1);
+        }
+        
+        .main-content {
+            margin-right: 360px;
+            height: 100vh;
+            overflow-y: auto;
+            transition: margin 0.3s ease;
+        }
+        
+        [dir="rtl"] .main-content {
+            margin-right: 0;
+            margin-left: 360px;
+        }
+
         /* --- Cinematic Toggle Styles --- */
         .theme-toggle-container {
             position: relative;
-            width: 104px;
-            height: 44px;
+            width: 80px;
+            height: 36px;
             border-radius: 9999px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -163,10 +251,10 @@
 
         .toggle-thumb {
             position: absolute;
-                        top: 7px; /* (44 - 26) / 2 - 2px border = 7px for vertical centering */
-            left: 8px;
-              width: 26px;
-              height: 26px;
+            top: 5px; /* (36 - 22) / 2 - 2px border = 5px for vertical centering */
+            left: 6px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Spring-like */
             z-index: 10;
@@ -184,7 +272,7 @@
         }
 
         .dark .toggle-thumb {
-            transform: translateX(56px);
+            transform: translateX(44px);
             /* Dark Mode Thumb */
             background: linear-gradient(145deg, #64748b 0%, #475569 50%, #334155 100%);
             border: 2px solid rgba(148, 163, 184, 0.3);
@@ -195,7 +283,7 @@
         }
 
         .toggle-icon {
-            font-size: 20px;
+            font-size: 16px;
             transition: color 0.3s ease;
         }
 
@@ -213,242 +301,577 @@
             100% { transform: scale(8); opacity: 0; }
         }
 
-        /* Prose Customization */
-        .prose { color: #1e293b; }
+        /* Prose Customization - Rich Text Formatting */
+        .prose { 
+            color: #1e293b; 
+            font-size: 1rem;
+            line-height: 1.75;
+        }
         .dark .prose { color: #fffffe; }
         
-        .prose strong { color: #008a8a; }
-        .dark .prose strong { color: #00d4d4; }
+        /* Headings */
+        .prose h1 { 
+            font-size: 1.875rem; 
+            font-weight: 700; 
+            margin-top: 1.5rem; 
+            margin-bottom: 1rem;
+            color: #0f172a;
+            border-bottom: 2px solid #00b8b8;
+            padding-bottom: 0.5rem;
+        }
+        .prose h2 { 
+            font-size: 1.5rem; 
+            font-weight: 600; 
+            margin-top: 1.25rem; 
+            margin-bottom: 0.75rem;
+            color: #0f172a;
+        }
+        .prose h3 { 
+            font-size: 1.25rem; 
+            font-weight: 600; 
+            margin-top: 1rem; 
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+        .prose h4 { 
+            font-size: 1.125rem; 
+            font-weight: 600; 
+            margin-top: 0.75rem; 
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+        .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4 { color: #fffffe; }
+        .dark .prose h1 { border-bottom-color: #00d4d4; }
         
-        .prose a { color: #7f5af0; text-decoration: none; border-bottom: 1px solid #7f5af0; }
+        /* Paragraphs */
+        .prose p { 
+            margin-bottom: 1rem; 
+            line-height: 1.75;
+        }
+        .prose p:last-child { margin-bottom: 0; }
+        
+        /* Bold & Emphasis */
+        .prose strong { 
+            color: #0f172a;
+            font-weight: 600; 
+            background: linear-gradient(120deg, rgba(0, 184, 184, 0.15) 0%, rgba(127, 90, 240, 0.15) 100%);
+            padding: 0.05em 0.25em;
+            border-radius: 0.2em;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
+        }
+        .dark .prose strong { 
+            color: #fffffe;
+            background: linear-gradient(120deg, rgba(0, 212, 212, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%);
+        }
+        .prose em { font-style: italic; color: #64748b; }
+        .dark .prose em { color: #94a1b2; }
+        
+        /* Links */
+        .prose a { 
+            color: #7f5af0; 
+            text-decoration: none; 
+            border-bottom: 1px solid #7f5af0;
+            transition: all 0.2s ease;
+        }
         .prose a:hover { color: #a78bfa; border-color: #a78bfa; }
         
-        .prose code { padding: 2px 4px; border-radius: 4px; font-size: 0.9em; background: rgba(0, 0, 0, 0.05); color: #d97706; }
-        .dark .prose code { background: rgba(249, 168, 38, 0.1); color: #f9a826; }
+        /* Inline Code */
+        .prose code { 
+            padding: 2px 4px; 
+            border-radius: 4px; 
+            font-size: 0.9em; 
+            background: rgba(0, 0, 0, 0.05); 
+            color: #d97706;
+        }
+        .dark .prose code { 
+            background: rgba(0, 212, 212, 0.15); 
+            color: #00d4d4; 
+        }
         
-        .prose pre { padding: 1rem; border-radius: 0.5rem; overflow-x: auto; background: #f1f5f9; border: 1px solid #e2e8f0; }
-        .dark .prose pre { background: #0f0f11; border: 1px solid #242629; }
+        /* Code Blocks */
+        .prose pre { 
+            padding: 1rem 1.25rem; 
+            border-radius: 0.75rem; 
+            overflow-x: auto; 
+            background: #1e293b; 
+            border: 1px solid #334155;
+            margin: 1rem 0;
+        }
+        .prose pre code {
+            background: transparent;
+            color: #e2e8f0;
+            padding: 0;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+        .dark .prose pre { 
+            background: #0f0f11; 
+            border: 1px solid #242629; 
+        }
+        .dark .prose pre code { color: #e2e8f0; }
         
-        .prose h1, .prose h2, .prose h3 { color: #0f172a; }
-        .dark .prose h1, .dark .prose h2, .dark .prose h3 { color: #fffffe; }
+        /* Lists */
+        .prose ul { 
+            list-style-type: disc;
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        .prose ol { 
+            list-style-type: decimal;
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        .prose li { 
+            margin-bottom: 0.5rem;
+            line-height: 1.6;
+        }
+        .prose li::marker {
+            color: #00b8b8;
+        }
+        .dark .prose li::marker { color: #00d4d4; }
         
-        .prose blockquote { border-left: 4px solid #00b8b8; padding-left: 1rem; font-style: italic; color: #64748b; }
-        .dark .prose blockquote { color: #94a1b2; }
+        /* Nested Lists */
+        .prose ul ul, .prose ol ul { list-style-type: circle; }
+        .prose ul ul ul, .prose ol ul ul { list-style-type: square; }
+        
+        /* Blockquotes */
+        .prose blockquote { 
+            border-left: 4px solid #00b8b8; 
+            padding-left: 1rem; 
+            font-style: italic; 
+            color: #64748b;
+        }
+        .dark .prose blockquote { 
+            color: #94a1b2; 
+            background: rgba(0, 212, 212, 0.05);
+            border-left-color: #00d4d4;
+        }
+        
+        /* Tables */
+        .prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        .prose th, .prose td {
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        .prose th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .dark .prose th, .dark .prose td { border-color: #334155; }
+        .dark .prose th { background: #1e293b; color: #fffffe; }
+        
+        /* Horizontal Rule */
+        .prose hr {
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 1.5rem 0;
+        }
+        .dark .prose hr { border-top-color: #334155; }
+        
+        /* Citations in text */
+        .prose sup {
+            color: #7f5af0;
+            font-weight: 600;
+        }
+        
+        /* RTL Support for prose */
+        [dir="rtl"] .prose {
+            text-align: right;
+        }
+        [dir="rtl"] .prose blockquote {
+            border-left: none;
+            border-right: 4px solid #00b8b8;
+            border-radius: 0.5rem 0 0 0.5rem;
+            padding-right: 1rem;
+        }
+        [dir="rtl"] .prose ul, [dir="rtl"] .prose ol {
+            padding-left: 0;
+            padding-right: 1.5rem;
+        }
 
         /* SVG Filters */
         .svg-filters { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+        /* Knowledge Library Animations */
+        @keyframes gradient-flow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
+        
+        .animate-gradient-flow {
+            animation: gradient-flow 2s linear infinite;
+        }
+        
+        .animate-shimmer {
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+        
+        /* Drop zone active state */
+        .drop-zone-active {
+            border-color: #7f5af0 !important;
+            background-color: rgba(127, 90, 240, 0.1) !important;
+            transform: scale(1.02);
+        }
+        
+        /* File item in queue */
+        .queued-file-item {
+            animation: fadeInDown 0.3s ease-out;
+        }
+        
+        .queued-file-item:hover .remove-file-btn {
+            opacity: 1;
+        }
+        
+        .remove-file-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        /* Indexing success pulse */
+        @keyframes success-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(44, 182, 125, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(44, 182, 125, 0); }
+        }
+        
+        .indexing-success {
+            animation: success-pulse 1s ease-in-out 3;
+        }
+        
+        /* Pending document shimmer effect */
+        @keyframes pending-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .pending-card {
+            background: linear-gradient(
+                90deg,
+                rgba(0, 184, 184, 0.05) 0%,
+                rgba(0, 184, 184, 0.15) 50%,
+                rgba(0, 184, 184, 0.05) 100%
+            );
+            background-size: 200% 100%;
+            animation: pending-shimmer 2s ease-in-out infinite;
+        }
+        
+        .dark .pending-card {
+            background: linear-gradient(
+                90deg,
+                rgba(0, 212, 212, 0.05) 0%,
+                rgba(0, 212, 212, 0.15) 50%,
+                rgba(0, 212, 212, 0.05) 100%
+            );
+            background-size: 200% 100%;
+        }
     </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
+<body class="antialiased min-h-screen bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark overflow-hidden">
     
     <!-- SVG Filters for Film Grain -->
-    <svg class="svg-filters">
-        <defs>
-            <filter id="grain-light">
-                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" />
-                <feColorMatrix in="noise" type="saturate" values="0" result="desaturatedNoise" />
-                <feComponentTransfer in="desaturatedNoise" result="lightGrain">
-                    <feFuncA type="linear" slope="0.3" />
-                </feComponentTransfer>
-                <feBlend in="SourceGraphic" in2="lightGrain" mode="overlay" />
-            </filter>
-            <filter id="grain-dark">
-                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" />
-                <feColorMatrix in="noise" type="saturate" values="0" result="desaturatedNoise" />
-                <feComponentTransfer in="desaturatedNoise" result="darkGrain">
-                    <feFuncA type="linear" slope="0.5" />
-                </feComponentTransfer>
-                <feBlend in="SourceGraphic" in2="darkGrain" mode="overlay" />
-            </filter>
-        </defs>
-    </svg>
+    <!-- ... existing filters ... -->
 
     <div id="canvas-container"></div>
 
+    <!-- Floating Sidebar Toggle (visible when sidebar is collapsed) -->
+    <button id="floatingSidebarToggle" 
+        class="hidden fixed top-4 z-50 w-10 h-10 rounded-xl bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all duration-300"
+        style="right: 16px;"
+        onclick="toggleSidebar()">
+        <i class="fas fa-columns"></i>
+    </button>
+
     <!-- Main Layout -->
-    <div class="container mx-auto px-4 py-8 max-w-5xl flex-grow z-10 relative">
+    <div class="flex h-screen w-full overflow-hidden">
         
-        <!-- Top Bar with Theme Toggle -->
-        <div class="fixed top-4 right-4 z-50">
-            <div class="theme-toggle-container" id="themeToggle" role="switch" aria-label="Toggle theme">
-                <!-- Background Icons -->
-                <div class="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
-                    <i class="fas fa-sun text-amber-600 dark:text-yellow-100 opacity-80"></i>
-                    <i class="fas fa-moon text-slate-700 dark:text-yellow-100 opacity-80"></i>
-                </div>
+        <!-- Main Content Area -->
+        <main class="main-content flex-grow relative z-10 custom-scrollbar">
+            <div class="container mx-auto px-4 py-8 max-w-4xl">
                 
-                <!-- Thumb -->
-                <div class="toggle-thumb">
-                    <i class="fas fa-sun text-amber-500 dark:hidden toggle-icon"></i>
-                    <i class="fas fa-moon text-yellow-200 hidden dark:block toggle-icon"></i>
-                    <!-- Particle Container -->
-                    <div id="particleContainer" class="absolute inset-0 flex items-center justify-center pointer-events-none"></div>
-                </div>
-                
-                <!-- Overlays for depth -->
-                <div class="absolute inset-0 rounded-full pointer-events-none" style="background: radial-gradient(ellipse at top, rgba(255,255,255,0.4) 0%, transparent 50%); mix-blend-mode: overlay;"></div>
-            </div>
-        </div>
 
-        <!-- Header -->
-        <header class="mb-12 text-center space-y-4 animate-fade-in-down mt-12">
-            <div class="flex items-center justify-center gap-4 mb-2">
-                <div class="relative group">
-                    <div class="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                    <img src="/static/public/logo.png" alt="Logo" class="relative w-20 h-20 rounded-xl transform transition duration-500 hover:scale-125">
-                </div>
-                <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-dark to-accent dark:from-primary-light dark:to-accent-light tracking-tight">
-                    RAGroot
-                </h1>
-            </div>
-            <p class="text-muted-light dark:text-muted-dark text-lg max-w-2xl mx-auto font-light">
-                Your AI-powered academic research assistant. Ask questions, explore citations, and visualize concepts.
-            </p>
-        </header>
 
-        <!-- Search Section -->
-        <div class="glass-panel rounded-2xl p-6 mb-8 shadow-2xl">
-            <form class="flex flex-col md:flex-row gap-4 mb-6" onsubmit="event.preventDefault(); submitQuery();" autocomplete="off">
-                <div class="relative flex-grow group">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <i class="fas fa-search text-muted-light dark:text-muted-dark group-focus-within:text-primary transition-colors"></i>
+                <!-- Header -->
+                <header class="mb-12 text-center space-y-4 animate-fade-in-down mt-12">
+                    <div class="flex items-center justify-center gap-4 mb-2">
+                        <div class="relative group">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                            <img src="/static/public/logo.png" alt="Logo" class="relative w-20 h-20 rounded-xl transform transition duration-500 hover:scale-125">
+                        </div>
+                        <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-dark to-accent dark:from-primary-light dark:to-accent-light tracking-tight">
+                            RAGroot
+                        </h1>
                     </div>
-                    <input type="text" id="queryInput" name="query"
-                        class="w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-light dark:text-text-dark text-lg rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent block w-full pl-12 py-2 px-4 transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-600" 
-                        placeholder="What would you like to know about the research?"
-                        autocomplete="off">
+                    <p class="text-muted-light dark:text-muted-dark text-lg max-w-2xl mx-auto font-light">
+                        Your AI-powered academic research assistant. Ask questions, explore citations, and visualize concepts.
+                    </p>
+                </header>
+
+                <!-- Search Section -->
+                <div class="glass-panel rounded-2xl p-6 mb-8 shadow-2xl">
+                    <form class="flex flex-col md:flex-row gap-4 mb-6" onsubmit="event.preventDefault(); submitQuery();" autocomplete="off">
+                        <div class="relative flex-grow group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-muted-light dark:text-muted-dark group-focus-within:text-primary transition-colors"></i>
+                            </div>
+                            <input type="text" id="queryInput" name="query"
+                                class="w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-light dark:text-text-dark text-lg rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent block w-full pl-12 py-2 px-4 transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-600" 
+                                placeholder="What would you like to know about the research?"
+                                autocomplete="off">
+                        </div>
+                        <button type="submit" id="submitBtn" 
+                            class="bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-white dark:text-dark-bg font-bold py-2 px-4 rounded-2xl shadow-lg transform transition hover:-translate-y-1 hover:shadow-primary/20 flex items-center justify-center gap-2 min-w-[120px]">
+                            <span>Ask AI</span>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+
+                    <!-- Options -->
+                    <div class="flex flex-wrap items-center gap-6 text-sm text-muted-light dark:text-muted-dark border-t border-gray-200 dark:border-gray-700/50 pt-4">
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
+                                <input type="checkbox" id="imageToggle" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <span><i class="fas fa-image mr-1"></i> Generate Image</span>
+                            </label>
+                        </div>
+
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
+                            <input type="checkbox" id="forceCpuToggle" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                            <span><i class="fas fa-microchip mr-1"></i> Force CPU</span>
+                        </label>
+
+                        <div class="flex items-center gap-2 ml-auto">
+                            <i class="fas fa-list-ol"></i>
+                            <span>Results:</span>
+                            <select id="topK" onchange="checkTopKWarning()" class="bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-1.5">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3" selected>3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" id="submitBtn" 
-                    class="bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-white dark:text-dark-bg font-bold py-2 px-4 rounded-2xl shadow-lg transform transition hover:-translate-y-1 hover:shadow-primary/20 flex items-center justify-center gap-2 min-w-[120px]">
-                    <span>Ask AI</span>
-                    <i class="fas fa-paper-plane"></i>
+
+                <!-- Loading State (hidden, now integrated in answer card) -->
+                <div id="loadingContainer" class="hidden"></div>
+
+                <!-- Error State -->
+                <div id="error" class="hidden glass-panel border-l-4 border-red-500 rounded-xl p-6 mb-8 flex items-center gap-4 text-red-500 dark:text-red-400">
+                    <i class="fas fa-exclamation-circle text-2xl"></i>
+                    <span id="errorText">Something went wrong.</span>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results" class="hidden space-y-8">
+                    <!-- Answer Card -->
+                    <div class="glass-panel rounded-2xl p-6 shadow-xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                                    <i class="fas fa-robot text-white"></i>
+                                </div>
+                                <h2 class="text-xl font-semibold text-text-light dark:text-text-dark">AI Response</h2>
+                            </div>
+                            <!-- Agent Badge -->
+                            <div id="agentBadge" class="hidden flex items-center gap-2">
+                                <span id="agentLanguage" class="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/20"></span>
+                                <span id="agentName" class="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent dark:bg-accent/20"></span>
+                            </div>
+                        </div>
+                        <div id="answer" class="prose dark:prose-invert max-w-none text-text-light dark:text-text-dark leading-relaxed"></div>
+                    </div>
+                    
+                    <!-- Generated Image Container -->
+                    <div id="imageContainer" class="hidden glass-panel rounded-2xl p-6 shadow-xl">
+                        <!-- Image will be inserted here -->
+                    </div>
+                    
+                    <!-- Citations Card -->
+                    <div class="glass-panel rounded-2xl p-6 shadow-xl">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary to-orange-400 flex items-center justify-center">
+                                <i class="fas fa-bookmark text-white"></i>
+                            </div>
+                            <h2 class="text-xl font-semibold text-text-light dark:text-text-dark">Citations</h2>
+                        </div>
+                        <div id="citations" class="space-y-3"></div>
+                    </div>
+                    
+                    <!-- Context Card -->
+                    <div class="glass-panel rounded-2xl p-6 shadow-xl">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-tertiary to-emerald-400 flex items-center justify-center">
+                                <i class="fas fa-file-alt text-white"></i>
+                            </div>
+                            <h2 class="text-xl font-semibold text-text-light dark:text-text-dark">Retrieved Context</h2>
+                        </div>
+                        <div id="context" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- Stats Footer -->
+                <footer class="mt-12 border-t border-gray-200 dark:border-gray-800 pt-8 pb-8">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                            <div class="text-2xl font-bold text-primary" id="docCount">-</div>
+                            <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Documents</div>
+                        </div>
+                        <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                            <div class="text-2xl font-bold text-accent" id="indexSize">-</div>
+                            <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Vectors</div>
+                        </div>
+                         <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                            <div class="text-2xl font-bold text-secondary">v2.0</div>
+                            <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Version</div>
+                        </div>
+                         <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
+                            <div class="text-2xl font-bold text-tertiary">Ready</div>
+                            <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Status</div>
+                        </div>
+                    </div>
+                </footer>
+
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside id="rightSidebar" class="border-l border-gray-200 dark:border-gray-800/50">
+            <!-- Sidebar Header -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-800/30">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100" id="sidebarTitle">Sources</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadSidebarSources(); loadStats();" class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/40 dark:hover:bg-slate-700/50 flex items-center justify-center transition-all text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" title="Refresh sources">
+                            <i class="fas fa-sync-alt text-xs"></i>
+                        </button>
+                        <!-- Theme Toggle -->
+                        <div class="theme-toggle-container" id="themeToggle" role="switch" aria-label="Toggle theme">
+                            <!-- Background Icons -->
+                            <div class="absolute inset-0 flex items-center justify-between px-3 pointer-events-none">
+                                <i class="fas fa-sun text-amber-600 dark:text-yellow-100 opacity-80 text-xs"></i>
+                                <i class="fas fa-moon text-slate-700 dark:text-yellow-100 opacity-80 text-xs"></i>
+                            </div>
+                            
+                            <!-- Thumb -->
+                            <div class="toggle-thumb">
+                                <i class="fas fa-sun text-amber-500 dark:hidden toggle-icon"></i>
+                                <i class="fas fa-moon text-yellow-200 hidden dark:block toggle-icon"></i>
+                                <!-- Particle Container -->
+                                <div id="particleContainer" class="absolute inset-0 flex items-center justify-center pointer-events-none"></div>
+                            </div>
+                            
+                            <!-- Overlays for depth -->
+                            <div class="absolute inset-0 rounded-full pointer-events-none" style="background: radial-gradient(ellipse at top, rgba(255,255,255,0.4) 0%, transparent 50%); mix-blend-mode: overlay;"></div>
+                        </div>
+                        
+                        <button onclick="toggleRtl()" class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/40 dark:hover:bg-slate-700/50 flex items-center justify-center transition-all text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" title="Toggle RTL/LTR">
+                            <i class="fas fa-language text-base"></i>
+                        </button>
+                        <button onclick="toggleSidebar()" class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/40 dark:hover:bg-slate-700/50 flex items-center justify-center transition-all text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" title="Toggle sidebar">
+                            <i id="sidebarToggleIcon" class="fas fa-bars text-base" style="transform: rotate(0deg);"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Sources Button -->
+            <div class="px-6 pt-4 pb-3">
+                <button onclick="toggleAddSourcePanel()" class="w-full py-3.5 bg-transparent border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-full text-slate-700 dark:text-slate-300 font-medium hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/20 transition-all flex items-center justify-center gap-2.5 group">
+                    <i class="fas fa-plus text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 text-sm"></i>
+                    <span id="addSourcesBtnText" class="text-sm">Add Sources</span>
                 </button>
-            </form>
-
-            <!-- Options -->
-            <div class="flex flex-wrap items-center gap-6 text-sm text-muted-light dark:text-muted-dark border-t border-gray-200 dark:border-gray-700/50 pt-4">
-                <div class="flex items-center gap-3">
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
-                        <input type="checkbox" id="imageToggle" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
-                        <span><i class="fas fa-image mr-1"></i> Generate Image</span>
-                    </label>
-                </div>
-
-                <label class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
-                    <input type="checkbox" id="forceCpuToggle" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
-                    <span><i class="fas fa-microchip mr-1"></i> Force CPU</span>
-                </label>
-
-                <div class="flex items-center gap-2 ml-auto">
-                    <i class="fas fa-list-ol"></i>
-                    <span>Results:</span>
-                    <select id="topK" class="bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-1.5">
-                        <option value="3" selected>3</option>
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Image Provider Settings (Hidden by default) -->
-             <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex flex-wrap gap-4 items-center">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-palette text-muted-light dark:text-muted-dark"></i>
-                    <select id="imageProvider" onchange="toggleApiKeyInput()" class="bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-2">
-                        <option value="local">Local (SDXL)</option>
-                        <option value="openai">OpenAI API</option>
-                        <option value="pollinations">Pollinations.ai</option>
-                    </select>
-                </div>
-                <div id="apiKeyContainer" class="hidden flex-grow max-w-md">
-                    <input type="password" id="apiKey" placeholder="Enter OpenAI API Key" class="w-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-600 text-text-light dark:text-text-dark text-sm rounded-lg focus:ring-primary focus:border-primary block p-2">
-                </div>
-            </div>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loadingContainer" class="hidden space-y-4">
-            <div class="glass-panel rounded-xl p-6 flex items-center gap-4 animate-pulse">
-                <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <div class="flex-grow">
-                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
-                    <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/2"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Error State -->
-        <div id="error" class="hidden glass-panel border-l-4 border-red-500 rounded-xl p-6 mb-8 flex items-center gap-4 text-red-500 dark:text-red-400">
-            <i class="fas fa-exclamation-circle text-2xl"></i>
-            <span id="errorText">Something went wrong.</span>
-        </div>
-
-        <!-- Results Section -->
-        <div id="results" class="hidden space-y-8">
-            
-            <!-- Generated Image -->
-            <div id="imageContainer" class="hidden glass-panel rounded-2xl p-2 overflow-hidden">
-                <!-- Image injected here -->
             </div>
 
-            <!-- Answer Card -->
-            <div class="glass-panel rounded-2xl p-8 relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-accent"></div>
-                <h3 class="text-2xl font-bold text-primary-dark dark:text-primary-light mb-6 flex items-center gap-3">
-                    <i class="fas fa-robot"></i> AI Analysis
-                </h3>
-                <div id="answer" class="prose prose-lg max-w-none leading-relaxed">
-                    <!-- Answer content -->
-                </div>
-            </div>
-
-            <!-- Citations & Context Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Citations -->
-                <div class="glass-panel rounded-xl p-6">
-                    <h4 class="text-xl font-semibold text-secondary mb-4 flex items-center gap-2">
-                        <i class="fas fa-book-open"></i> Sources
-                    </h4>
-                    <div id="citations" class="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                        <!-- Citations list -->
-                    </div>
-                </div>
-
-                <!-- Context -->
-                <div class="glass-panel rounded-xl p-6">
-                    <h4 class="text-xl font-semibold text-tertiary mb-4 flex items-center gap-2">
-                        <i class="fas fa-layer-group"></i> Context
-                    </h4>
-                    <div id="context" class="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                        <!-- Context list -->
+            <!-- Search/URL Input -->
+            <div class="px-6 pb-5">
+                <div class="bg-slate-100 dark:bg-slate-800/40 rounded-2xl p-3.5 border border-slate-200 dark:border-slate-700/30">
+                    <div class="relative flex items-center gap-2">
+                        <input type="text" id="sidebarUrlInput" 
+                            class="flex-grow bg-transparent border-0 text-slate-800 dark:text-slate-200 text-sm py-2 px-3 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none" 
+                            placeholder="Enter URL to fetch and index (e.g., https://example.com/article)"
+                            onkeypress="handleSidebarInputKeypress(event)"
+                            autocomplete="off"
+                            spellcheck="false">
+                        <button onclick="addSidebarUrl()" class="w-9 h-9 rounded-lg bg-primary hover:bg-primary/90 text-white flex items-center justify-center transition-all duration-200 flex-shrink-0 shadow-sm hover:shadow" title="Add URL or Document">
+                            <i class="fas fa-plus text-sm"></i>
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Stats Footer -->
-        <footer class="mt-12 border-t border-gray-200 dark:border-gray-800 pt-8 pb-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
-                    <div class="text-2xl font-bold text-primary" id="docCount">-</div>
-                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Documents</div>
+            <!-- Add Source Panel (Hidden by default) -->
+            <div id="addSourcePanel" class="hidden px-6 pb-5 animate-fade-in-down">
+                <div id="sidebarDropZone" 
+                    class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center transition-all duration-300 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/20 cursor-pointer"
+                    ondragover="handleDragOver(event)"
+                    ondragleave="handleDragLeave(event)"
+                    ondrop="handleDrop(event)"
+                    onclick="document.getElementById('fileInput').click()">
+                    
+                    <div class="space-y-3">
+                        <div class="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800/40 flex items-center justify-center mx-auto">
+                            <i class="fas fa-cloud-upload-alt text-xl text-primary"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Drop files or click to browse</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-500">PDF, DOCX, Images, Videos, and more</p>
+                    </div>
                 </div>
-                <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
-                    <div class="text-2xl font-bold text-accent" id="indexSize">-</div>
-                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Vectors</div>
+                
+                <!-- Queued Files in Sidebar -->
+                <div id="sidebarQueuedFiles" class="mt-3 space-y-2 max-h-40 overflow-y-auto hidden">
+                    <!-- Queued files here -->
                 </div>
-                 <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
-                    <div class="text-2xl font-bold text-secondary">v2.0</div>
-                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Version</div>
-                </div>
-                 <div class="p-4 rounded-lg bg-surface-light/50 dark:bg-surface-dark/50">
-                    <div class="text-2xl font-bold text-tertiary">Ready</div>
-                    <div class="text-xs text-muted-light dark:text-muted-dark uppercase tracking-wider">Status</div>
+                
+                <button id="sidebarIndexBtn" onclick="startIndexing()" disabled
+                    class="w-full mt-4 py-2.5 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm">
+                    Index Selected
+                </button>
+            </div>
+
+            <!-- Source List -->
+            <div class="flex-grow overflow-y-auto px-6 pb-5 space-y-3 custom-scrollbar" id="sidebarSourceList">
+                <!-- Empty State -->
+                <div id="sidebarEmptyState" class="flex flex-col items-center justify-center h-full text-center py-12 px-6">
+                    <div class="w-14 h-14 rounded-xl bg-slate-200 dark:bg-slate-800/40 flex items-center justify-center mb-4">
+                        <i class="fas fa-file-lines text-2xl text-slate-400 dark:text-slate-600"></i>
+                    </div>
+                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400" id="emptyStateText">Your saved sources will appear here. Add PDFs, videos, websites, text files, PowerPoint presentations, or other supported formats to get started.</p>
                 </div>
             </div>
-        </footer>
+            
+            <!-- Sidebar Footer -->
+            <div class="p-6 border-t border-gray-200 dark:border-gray-800/30 text-xs text-slate-600 dark:text-slate-500 flex justify-between items-center">
+                <span class="font-medium">RAGroot v2.0</span>
+                <div class="flex gap-4">
+                    <button onclick="showHelp()" class="hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Help</button>
+                    <button onclick="showSettings()" class="hover:text-slate-800 dark:hover:text-slate-300 transition-colors">Settings</button>
+                </div>
+            </div>
+        </aside>
 
     </div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.pptx,.xlsx,.txt,.md,.csv,.json,.jsonl,.html,.htm,.png,.jpg,.jpeg,.tiff,.bmp,.webp" class="hidden" onchange="handleFileSelect(event)">
+
 
     <!-- Scripts -->
     <script>
@@ -611,6 +1034,506 @@
         });
 
         // --- Application Logic ---
+        
+        // Sidebar & RTL State
+        let isSidebarOpen = true;
+        let isRtl = false;
+        let isAddSourcePanelOpen = false;
+        
+        // Search mode state (always internet mode)
+        let searchMode = 'internet';
+        
+        // Knowledge Library State
+        let queuedFiles = [];
+        let isIndexing = false;
+        
+        // --- Translations ---
+        const translations = {
+            en: {
+                // Header
+                appTitle: 'RAGroot',
+                appSubtitle: 'Your AI-powered academic research assistant. Ask questions, explore citations, and visualize concepts.',
+                
+                // Search
+                searchPlaceholder: 'What would you like to know about the research?',
+                askAiBtn: 'Ask AI',
+                generateImage: 'Generate Image',
+                forceCpu: 'Force CPU',
+                results: 'Results:',
+                
+                // Results
+                aiResponse: 'AI Response',
+                citations: 'Citations',
+                retrievedContext: 'Retrieved Context',
+                noCitations: 'No citations found.',
+                noContext: 'No context retrieved.',
+                
+                // Footer stats
+                documents: 'Documents',
+                vectors: 'Vectors',
+                version: 'Version',
+                status: 'Status',
+                ready: 'Ready',
+                
+                // Sidebar
+                sources: 'Sources',
+                addSources: 'Add Sources',
+                urlPlaceholder: 'Enter URL to fetch and index (e.g., https://example.com/article)',
+                dropFilesText: 'Drop files or click to browse',
+                dropFilesSubtext: 'PDF, DOCX, Images, Videos, and more',
+                indexSelected: 'Index Selected',
+                emptyState: 'Your saved sources will appear here. Add PDFs, videos, websites, text files, PowerPoint presentations, or other supported formats to get started.',
+                help: 'Help',
+                settings: 'Settings',
+                
+                // Notifications
+                helpComingSoon: 'Help documentation coming soon!',
+                settingsComingSoon: 'Settings panel coming soon!',
+                
+                // Errors
+                noResponse: 'No response received from the AI. Please try again.',
+                errorOccurred: 'An error occurred while processing your request.'
+            },
+            he: {
+                // Header
+                appTitle: 'RAGroot',
+                appSubtitle: 'עוזר המחקר האקדמי שלך מבוסס בינה מלאכותית. שאל שאלות, חקור ציטוטים והמחש מושגים.',
+                
+                // Search
+                searchPlaceholder: 'מה תרצה לדעת על המחקר?',
+                askAiBtn: 'שאל AI',
+                generateImage: 'צור תמונה',
+                forceCpu: 'הפעל CPU',
+                results: 'תוצאות:',
+                
+                // Results
+                aiResponse: 'תשובת AI',
+                citations: 'ציטוטים',
+                retrievedContext: 'הקשר שאוחזר',
+                noCitations: 'לא נמצאו ציטוטים.',
+                noContext: 'לא אוחזר הקשר.',
+                
+                // Footer stats
+                documents: 'מסמכים',
+                vectors: 'וקטורים',
+                version: 'גרסה',
+                status: 'סטטוס',
+                ready: 'מוכן',
+                
+                // Sidebar
+                sources: 'מקורות',
+                addSources: 'הוספת מקורות',
+                urlPlaceholder: 'הזן כתובת URL לאחזור ואינדוקס',
+                dropFilesText: 'גרור קבצים או לחץ לעיון',
+                dropFilesSubtext: 'PDF, DOCX, תמונות, סרטונים ועוד',
+                indexSelected: 'אנדקס נבחרים',
+                emptyState: 'כאן יופיעו המקורות השמורים. אפשר להוסיף קובצי PDF, סרטונים, אתרים, טקסט, מצגות, או פורמטים נתמכים אחרים.',
+                help: 'עזרה',
+                settings: 'הגדרות',
+                
+                // Notifications
+                helpComingSoon: 'תיעוד עזרה יגיע בקרוב!',
+                settingsComingSoon: 'פאנל הגדרות יגיע בקרוב!',
+                
+                // Errors
+                noResponse: 'לא התקבלה תשובה מה-AI. נסה שוב.',
+                errorOccurred: 'אירעה שגיאה בעיבוד הבקשה שלך.'
+            }
+        };
+        
+        // Get current language
+        function getCurrentLang() {
+            return isRtl ? 'he' : 'en';
+        }
+        
+        // Get translation
+        function t(key) {
+            const lang = getCurrentLang();
+            return translations[lang][key] || translations['en'][key] || key;
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('rightSidebar');
+            const mainContent = document.querySelector('.main-content');
+            const floatingToggle = document.getElementById('floatingSidebarToggle');
+            const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
+            
+            isSidebarOpen = !isSidebarOpen;
+            
+            // Save state to localStorage
+            localStorage.setItem('sidebarOpen', isSidebarOpen);
+            
+            if (isSidebarOpen) {
+                sidebar.style.transform = 'translateX(0)';
+                floatingToggle.classList.add('hidden');
+                if (sidebarToggleIcon) sidebarToggleIcon.style.transform = 'rotate(0deg)';
+                if (isRtl) {
+                    mainContent.style.marginLeft = '360px';
+                } else {
+                    mainContent.style.marginRight = '360px';
+                }
+            } else {
+                floatingToggle.classList.remove('hidden');
+                floatingToggle.classList.add('flex');
+                if (sidebarToggleIcon) sidebarToggleIcon.style.transform = 'rotate(180deg)';
+                if (isRtl) {
+                    sidebar.style.transform = 'translateX(-100%)';
+                    mainContent.style.marginLeft = '0';
+                    floatingToggle.style.left = '16px';
+                    floatingToggle.style.right = 'auto';
+                } else {
+                    sidebar.style.transform = 'translateX(100%)';
+                    mainContent.style.marginRight = '0';
+                    floatingToggle.style.right = '16px';
+                    floatingToggle.style.left = 'auto';
+                }
+            }
+        }
+
+        function toggleRtl() {
+            isRtl = !isRtl;
+            applyLanguage();
+        }
+        
+        function applyLanguage() {
+            const html = document.documentElement;
+            const mainContent = document.querySelector('.main-content');
+            
+            // Set direction
+            html.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+            
+            // Save preference
+            localStorage.setItem('isRtl', isRtl);
+            
+            // --- Header ---
+            const appSubtitle = document.querySelector('header p');
+            if (appSubtitle) appSubtitle.textContent = t('appSubtitle');
+            
+            // --- Search Section ---
+            const queryInput = document.getElementById('queryInput');
+            if (queryInput) queryInput.placeholder = t('searchPlaceholder');
+            
+            const submitBtnText = document.querySelector('#submitBtn span');
+            if (submitBtnText) submitBtnText.textContent = t('askAiBtn');
+            
+            // Options
+            const imageToggleLabel = document.querySelector('label[for="imageToggle"] span, label:has(#imageToggle) span');
+            const imageLabel = document.querySelector('#imageToggle')?.parentElement?.querySelector('span');
+            if (imageLabel) {
+                imageLabel.innerHTML = `<i class="fas fa-image mr-1"></i> ${t('generateImage')}`;
+            }
+            
+            const cpuLabel = document.querySelector('#forceCpuToggle')?.parentElement?.querySelector('span');
+            if (cpuLabel) {
+                cpuLabel.innerHTML = `<i class="fas fa-microchip mr-1"></i> ${t('forceCpu')}`;
+            }
+            
+            const resultsLabel = document.querySelector('.flex.items-center.gap-2.ml-auto span');
+            if (resultsLabel) resultsLabel.textContent = t('results');
+            
+            // --- Results Section ---
+            const aiResponseTitle = document.querySelector('#results .glass-panel:first-child h2');
+            if (aiResponseTitle) aiResponseTitle.textContent = t('aiResponse');
+            
+            const citationsTitle = document.querySelector('#citations')?.parentElement?.querySelector('h2');
+            if (citationsTitle) citationsTitle.textContent = t('citations');
+            
+            const contextTitle = document.querySelector('#context')?.parentElement?.querySelector('h2');
+            if (contextTitle) contextTitle.textContent = t('retrievedContext');
+            
+            // --- Footer Stats ---
+            const statLabels = document.querySelectorAll('footer .text-xs.text-muted-light');
+            if (statLabels.length >= 4) {
+                statLabels[0].textContent = t('documents');
+                statLabels[1].textContent = t('vectors');
+                statLabels[2].textContent = t('version');
+                statLabels[3].textContent = t('status');
+            }
+            
+            const statusValue = document.querySelector('footer .text-tertiary');
+            if (statusValue) statusValue.textContent = t('ready');
+            
+            // --- Sidebar ---
+            const sidebarTitle = document.getElementById('sidebarTitle');
+            if (sidebarTitle) sidebarTitle.textContent = t('sources');
+            
+            const addSourcesBtnText = document.getElementById('addSourcesBtnText');
+            if (addSourcesBtnText) addSourcesBtnText.textContent = t('addSources');
+            
+            const sidebarUrlInput = document.getElementById('sidebarUrlInput');
+            if (sidebarUrlInput) sidebarUrlInput.placeholder = t('urlPlaceholder');
+            
+            // Drop zone
+            const dropZoneText = document.querySelector('#sidebarDropZone p.font-medium');
+            if (dropZoneText) dropZoneText.textContent = t('dropFilesText');
+            
+            const dropZoneSubtext = document.querySelector('#sidebarDropZone p.text-xs');
+            if (dropZoneSubtext) dropZoneSubtext.textContent = t('dropFilesSubtext');
+            
+            const sidebarIndexBtn = document.getElementById('sidebarIndexBtn');
+            if (sidebarIndexBtn && !isIndexing) sidebarIndexBtn.textContent = t('indexSelected');
+            
+            const emptyStateText = document.getElementById('emptyStateText');
+            if (emptyStateText) emptyStateText.textContent = t('emptyState');
+            
+            // Footer buttons
+            const helpBtn = document.querySelector('#rightSidebar .p-6.border-t button:first-of-type');
+            if (helpBtn) helpBtn.textContent = t('help');
+            
+            const settingsBtn = document.querySelector('#rightSidebar .p-6.border-t button:last-of-type');
+            if (settingsBtn) settingsBtn.textContent = t('settings');
+            
+            // --- Layout adjustment ---
+            if (isSidebarOpen) {
+                if (isRtl) {
+                    mainContent.style.marginRight = '0';
+                    mainContent.style.marginLeft = '360px';
+                } else {
+                    mainContent.style.marginLeft = '0';
+                    mainContent.style.marginRight = '360px';
+                }
+            } else {
+                mainContent.style.marginLeft = '0';
+                mainContent.style.marginRight = '0';
+            }
+        }
+
+        function toggleAddSourcePanel() {
+            const panel = document.getElementById('addSourcePanel');
+            isAddSourcePanelOpen = !isAddSourcePanelOpen;
+            
+            if (isAddSourcePanelOpen) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        async function addSidebarUrl() {
+            const urlInput = document.getElementById('sidebarUrlInput');
+            const url = urlInput.value.trim();
+            
+            if (!url) return;
+            
+            // Check if it's a URL or search query
+            const isUrl = url.startsWith('http://') || url.startsWith('https://');
+            
+            if (!isUrl) {
+                // Treat as search query - web search coming soon
+                showNotification('Web search feature coming soon! For now, please enter a direct URL starting with http:// or https://', 'info');
+                return;
+            }
+            
+            // Validate URL format
+            let validUrl;
+            try {
+                validUrl = new URL(url);
+            } catch (e) {
+                showNotification('Invalid URL format. Please enter a valid URL.', 'error');
+                return;
+            }
+            
+            // Generate a temporary ID for tracking this pending document
+            const tempId = 'url_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Extract filename from URL
+            const urlPath = validUrl.pathname;
+            let filename = urlPath.split('/').pop() || validUrl.hostname;
+            if (!filename.includes('.')) {
+                filename = validUrl.hostname;
+            }
+            
+            // Add to pending documents immediately
+            pendingDocuments.set(tempId, {
+                url: validUrl.href,
+                filename: filename,
+                startTime: Date.now()
+            });
+            
+            // Clear input and refresh UI immediately
+            urlInput.value = '';
+            await loadSidebarSources();
+            
+            // Show notification
+            showNotification('Indexing document... This may take a moment.', 'info');
+            
+            // Start indexing in background (non-blocking)
+            indexUrlInBackground(tempId, validUrl.href);
+        }
+        
+        async function indexUrlInBackground(tempId, url) {
+            try {
+                // Fetch and index the URL
+                const response = await fetch('/documents/index-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                // Remove from pending
+                pendingDocuments.delete(tempId);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showNotification(
+                        `Successfully indexed: ${result.filename}!`, 
+                        'success'
+                    );
+                    
+                    // Add to newly added docs for highlighting
+                    if (result.document_id) {
+                        newlyAddedDocIds.add(result.document_id);
+                    }
+                    
+                    // Refresh the sidebar sources and stats
+                    await loadSidebarSources();
+                    await loadStats();
+                } else {
+                    const error = await response.json();
+                    const errorMsg = error.detail || error.message || 'Failed to fetch or index the URL';
+                    showNotification('Error: ' + errorMsg, 'error');
+                    
+                    // Refresh to remove pending item
+                    await loadSidebarSources();
+                }
+            } catch (e) {
+                console.error('Error processing URL:', e);
+                
+                // Remove from pending
+                pendingDocuments.delete(tempId);
+                
+                showNotification(
+                    'Failed to process URL: ' + (e.message || 'Network error'), 
+                    'error'
+                );
+                
+                // Refresh to remove pending item
+                await loadSidebarSources();
+            }
+        }
+
+        let newlyAddedDocIds = new Set();
+        let pendingDocuments = new Map(); // Map of temporary_id -> {url, filename, startTime}
+
+        async function loadSidebarSources() {
+            const list = document.getElementById('sidebarSourceList');
+            let emptyState = document.getElementById('sidebarEmptyState');
+            
+            try {
+                const response = await fetch('/documents');
+                const data = await response.json();
+                
+                const hasDocuments = data.documents && data.documents.length > 0;
+                const hasPending = pendingDocuments.size > 0;
+                
+                if (hasDocuments || hasPending) {
+                    // Hide empty state if it exists
+                    if (emptyState) {
+                        emptyState.classList.add('hidden');
+                    }
+                    
+                    let html = '';
+                    
+                    // First, render pending documents with loading state
+                    pendingDocuments.forEach((pendingDoc, tempId) => {
+                        const icon = getFileIcon(pendingDoc.filename);
+                        
+                        html += `
+                            <div id="pending-${tempId}" class="pending-card flex items-center gap-3 p-3 rounded-xl border border-primary/40 dark:border-primary/50 transition-all group relative">
+                                <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary flex-shrink-0 relative overflow-hidden">
+                                    <i class="fas ${icon} opacity-40"></i>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                </div>
+                                <div class="flex-grow min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(pendingDoc.filename)}</p>
+                                        <span class="flex-shrink-0 px-2 py-0.5 bg-gradient-to-r from-primary to-primary-light text-[9px] text-white font-bold rounded-full uppercase tracking-wide">
+                                            <i class="fas fa-cog fa-spin mr-1"></i>Indexing
+                                        </span>
+                                    </div>
+                                    <p class="text-[10px] text-primary/80 dark:text-primary-light/80 uppercase tracking-wider mt-0.5">
+                                        <i class="fas fa-bolt mr-1"></i>Processing & embedding document...
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    // Then render existing documents (newest first)
+                    if (hasDocuments) {
+                        const reversedDocs = [...data.documents].reverse();
+                        
+                        reversedDocs.forEach(doc => {
+                            const icon = getFileIcon(doc.filename);
+                            const isNew = newlyAddedDocIds.has(doc.document_id);
+                            
+                            html += `
+                                <div class="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800/30 rounded-xl border ${isNew ? 'border-primary/50 bg-primary/5 indexing-success' : 'border-slate-200 dark:border-slate-700/20'} hover:border-slate-300 dark:hover:border-slate-600/40 transition-all group relative">
+                                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                                        <i class="fas ${icon}"></i>
+                                    </div>
+                                    <div class="flex-grow min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(doc.filename)}</p>
+                                            ${isNew ? '<span class="flex-shrink-0 px-1.5 py-0.5 bg-tertiary text-[8px] text-white font-bold rounded uppercase">Ready</span>' : ''}
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 dark:text-slate-500 uppercase tracking-wider">${doc.file_type} • ${doc.language} • ${doc.chunk_count} chunks</p>
+                                    </div>
+                                    <button onclick="deleteDocument('${doc.document_id}')" class="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-all flex-shrink-0">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    list.innerHTML = html;
+                    
+                    // After a while, remove the "new" status from newly added docs
+                    if (newlyAddedDocIds.size > 0) {
+                        setTimeout(() => {
+                            newlyAddedDocIds.clear();
+                            loadSidebarSources(); // Refresh to remove "Ready" badges
+                        }, 10000); // 10 seconds
+                    }
+                } else {
+                    // Recreate empty state if it doesn't exist
+                    if (!emptyState) {
+                        emptyState = document.createElement('div');
+                        emptyState.id = 'sidebarEmptyState';
+                        emptyState.className = 'flex flex-col items-center justify-center h-full text-center py-12 px-6';
+                        emptyState.innerHTML = `
+                            <div class="w-14 h-14 rounded-xl bg-slate-200 dark:bg-slate-800/40 flex items-center justify-center mb-4">
+                                <i class="fas fa-file-lines text-2xl text-slate-400 dark:text-slate-600"></i>
+                            </div>
+                            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400" id="emptyStateText">Your saved sources will appear here. Add PDFs, videos, websites, text files, PowerPoint presentations, or other supported formats to get started.</p>
+                        `;
+                    }
+                    list.innerHTML = '';
+                    list.appendChild(emptyState);
+                    emptyState.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading sources:', error);
+            }
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Are you sure you want to remove this document?')) return;
+            
+            try {
+                const response = await fetch(`/documents/${docId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showNotification('Document removed', 'success');
+                    loadSidebarSources();
+                    loadStats();
+                }
+            } catch (error) {
+                showNotification('Failed to remove document', 'error');
+            }
+        }
 
         // Markdown Configuration
         marked.setOptions({
@@ -675,6 +1598,13 @@
             }
         }
 
+        function checkTopKWarning() {
+            const topK = parseInt(document.getElementById('topK').value);
+            if (topK > 7) {
+                showNotification('Higher Top-K values may increase response time.', 'warning');
+            }
+        }
+
         // Load Stats
         async function loadStats() {
             try {
@@ -686,16 +1616,57 @@
                 console.error('Error loading stats:', error);
             }
         }
-        loadStats();
-
-        // Key Press Handler - Removed as form handles submit
-        /*
-        document.getElementById('queryInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                submitQuery();
+        
+        // Language Detection (matches server-side detection)
+        function detectLanguage(text) {
+            // Hebrew Unicode range: \u0590-\u05FF
+            const hebrewPattern = /[\u0590-\u05FF]/g;
+            const hebrewChars = (text.match(hebrewPattern) || []).length;
+            const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
+            
+            return hebrewChars > latinChars ? 'hebrew' : 'english';
+        }
+        
+        // Show Agent Badge
+        function showAgentBadge(query) {
+            const language = detectLanguage(query);
+            const agentBadge = document.getElementById('agentBadge');
+            const agentLanguage = document.getElementById('agentLanguage');
+            const agentName = document.getElementById('agentName');
+            
+            if (language === 'hebrew') {
+                agentLanguage.textContent = '🇮🇱 עברית';
+                agentName.textContent = 'Hebrew Agent';
+                agentLanguage.className = 'px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400';
+            } else {
+                agentLanguage.textContent = '🇬🇧 English';
+                agentName.textContent = 'English Agent';
+                agentLanguage.className = 'px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400';
             }
-        });
-        */
+            
+            agentBadge.classList.remove('hidden');
+            return language;
+        }
+        
+        // Hide Agent Badge
+        function hideAgentBadge() {
+            const agentBadge = document.getElementById('agentBadge');
+            agentBadge.classList.add('hidden');
+        }
+        
+        // Initial Load
+        loadStats();
+        loadSidebarSources();
+        initializeSidebarState();
+
+        // Auto-refresh sidebar every 30 seconds to keep it in sync
+        setInterval(() => {
+            // Only refresh if not currently indexing to avoid UI flickering/interference
+            if (typeof isIndexing !== 'undefined' && !isIndexing) {
+                loadSidebarSources();
+                loadStats();
+            }
+        }, 30000);
 
         // Main Query Function
         async function submitQuery() {
@@ -704,7 +1675,6 @@
             if (!query) return;
 
             const submitBtn = document.getElementById('submitBtn');
-            const loadingContainer = document.getElementById('loadingContainer');
             const resultsContainer = document.getElementById('results');
             const errorContainer = document.getElementById('error');
             const answerDiv = document.getElementById('answer');
@@ -713,28 +1683,35 @@
             const imageContainer = document.getElementById('imageContainer');
 
             // Reset UI
-            resultsContainer.classList.add('hidden');
             errorContainer.classList.add('hidden');
             imageContainer.classList.add('hidden');
             imageContainer.innerHTML = '';
-            answerDiv.innerHTML = '';
             citationsDiv.innerHTML = '';
             contextDiv.innerHTML = '';
+            hideAgentBadge();
             
             submitBtn.disabled = true;
             submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            loadingContainer.classList.remove('hidden');
+            
+            // Show results container immediately with loading spinner in answer div
+            resultsContainer.classList.remove('hidden');
+            answerDiv.innerHTML = `
+                <div class="flex items-center gap-4">
+                    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <span class="text-primary animate-pulse">Thinking...</span>
+                </div>
+            `;
 
             const generateImage = document.getElementById('imageToggle').checked;
             const topK = parseInt(document.getElementById('topK').value);
             const forceCpu = document.getElementById('forceCpuToggle').checked;
-            const imageProvider = document.getElementById('imageProvider').value;
-            const apiKey = document.getElementById('apiKey').value.trim();
+            const imageProviderEl = document.getElementById('imageProvider');
+            const apiKeyEl = document.getElementById('apiKey');
+            const imageProvider = imageProviderEl ? imageProviderEl.value : 'pollinations';
+            const apiKey = apiKeyEl ? apiKeyEl.value.trim() : '';
 
             try {
                 // Start Streaming
-                resultsContainer.classList.remove('hidden');
-                answerDiv.innerHTML = '<span class="animate-pulse text-primary">Thinking...</span>';
 
                 const response = await fetch('/stream', {
                     method: 'POST',
@@ -772,7 +1749,7 @@
                                     if (isFirstToken) {
                                         answerDiv.innerHTML = '';
                                         isFirstToken = false;
-                                        loadingContainer.classList.add('hidden'); // Hide loading once tokens start
+                                        showAgentBadge(query); // Show which agent is responding
                                     }
                                     fullAnswer += data.content;
                                     answerDiv.innerHTML = renderMarkdownWithLatex(fullAnswer);
@@ -781,7 +1758,20 @@
                                 } else if (data.type === 'context') {
                                     renderContext(data.content);
                                 } else if (data.type === 'complete') {
-                                    // Final render
+                                    
+                                    // If no tokens were streamed, use the complete content
+                                    if (isFirstToken && data.content) {
+                                        answerDiv.innerHTML = '';
+                                        fullAnswer = data.content;
+                                        answerDiv.innerHTML = renderMarkdownWithLatex(fullAnswer);
+                                        showAgentBadge(query);
+                                        isFirstToken = false;
+                                    } else if (isFirstToken) {
+                                        // No content at all - show error message
+                                        answerDiv.innerHTML = `<span class="text-red-500">${t('noResponse')}</span>`;
+                                    }
+                                    
+                                    // Final render with MathJax
                                     if (window.MathJax) MathJax.typesetPromise([answerDiv]);
                                     
                                     // Trigger Image Generation if requested
@@ -800,9 +1790,8 @@
 
             } catch (error) {
                 console.error(error);
-                loadingContainer.classList.add('hidden');
                 errorContainer.classList.remove('hidden');
-                document.getElementById('errorText').textContent = error.message || 'An error occurred while processing your request.';
+                document.getElementById('errorText').textContent = error.message || t('errorOccurred');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -813,16 +1802,20 @@
             const container = document.getElementById('citations');
             container.innerHTML = '';
             if (citations.length === 0) {
-                container.innerHTML = '<p class="text-muted-light dark:text-muted-dark italic">No citations found.</p>';
+                container.innerHTML = `<p class="text-muted-light dark:text-muted-dark italic">${t('noCitations')}</p>`;
                 return;
             }
+            const unknownText = isRtl ? 'לא ידוע' : 'Unknown';
             citations.forEach((c, i) => {
                 const div = document.createElement('div');
                 div.className = 'bg-surface-light/50 dark:bg-surface-dark/50 p-3 rounded border-l-2 border-secondary hover:bg-surface-light dark:hover:bg-surface-dark transition-colors';
+                if (isRtl) {
+                    div.className = div.className.replace('border-l-2', 'border-r-2');
+                }
                 div.innerHTML = `
                     <div class="text-xs text-secondary font-bold mb-1">[${i+1}] ${escapeHtml(c.doc_id)}</div>
                     <div class="text-sm font-medium text-text-light dark:text-text-dark">${escapeHtml(c.title)}</div>
-                    <div class="text-xs text-muted-light dark:text-muted-dark mt-1">${escapeHtml(c.authors || 'Unknown')}</div>
+                    <div class="text-xs text-muted-light dark:text-muted-dark mt-1">${escapeHtml(c.authors || unknownText)}</div>
                 `;
                 container.appendChild(div);
             });
@@ -832,13 +1825,19 @@
             const container = document.getElementById('context');
             container.innerHTML = '';
             if (contexts.length === 0) {
-                container.innerHTML = '<p class="text-muted-light dark:text-muted-dark italic">No context retrieved.</p>';
+                container.innerHTML = `<p class="text-muted-light dark:text-muted-dark italic">${t('noContext')}</p>`;
                 return;
             }
+            const docLabel = isRtl ? 'מסמך' : 'Doc';
             contexts.forEach((c, i) => {
                 const div = document.createElement('div');
                 div.className = 'bg-surface-light/50 dark:bg-surface-dark/50 p-3 rounded border-l-2 border-tertiary hover:bg-surface-light dark:hover:bg-surface-dark transition-colors text-sm text-text-light dark:text-text-dark leading-relaxed';
-                div.innerHTML = `<span class="text-tertiary font-bold mr-2">Doc ${i+1}:</span> ${escapeHtml(c)}`;
+                if (isRtl) {
+                    div.className = div.className.replace('border-l-2', 'border-r-2');
+                    div.innerHTML = `<span class="text-tertiary font-bold ml-2">${docLabel} ${i+1}:</span> ${escapeHtml(c)}`;
+                } else {
+                    div.innerHTML = `<span class="text-tertiary font-bold mr-2">${docLabel} ${i+1}:</span> ${escapeHtml(c)}`;
+                }
                 container.appendChild(div);
             });
         }
@@ -891,6 +1890,333 @@
                         Image generation unavailable: ${escapeHtml(error.message)}
                     </div>
                 `;
+            }
+        }
+
+        // --- New Sidebar Functions ---
+        
+        function clearSidebarInput() {
+            const input = document.getElementById('sidebarUrlInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+        }
+        
+        function handleSidebarInputKeypress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                addSidebarUrl();
+            }
+        }
+        
+        function showHelp() {
+            showNotification(t('helpComingSoon'), 'info');
+        }
+        
+        function showSettings() {
+            showNotification(t('settingsComingSoon'), 'info');
+        }
+        
+        // Initialize sidebar state from localStorage
+        function initializeSidebarState() {
+            // Set search mode to internet (always)
+            searchMode = 'internet';
+            
+            // Restore sidebar open state
+            const savedSidebarState = localStorage.getItem('sidebarOpen');
+            if (savedSidebarState === 'false') {
+                // Sidebar was closed, trigger toggle to close it
+                isSidebarOpen = true; // Set to true so toggle will close it
+                toggleSidebar();
+            }
+            
+            // Restore language preference
+            const savedRtl = localStorage.getItem('isRtl');
+            if (savedRtl === 'true') {
+                isRtl = true;
+                applyLanguage();
+            }
+        }
+        
+        // --- Knowledge Library Functions ---
+        
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropZone = document.getElementById('sidebarDropZone');
+            dropZone.classList.add('drop-zone-active');
+        }
+        
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropZone = document.getElementById('sidebarDropZone');
+            dropZone.classList.remove('drop-zone-active');
+        }
+        
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const dropZone = document.getElementById('sidebarDropZone');
+            dropZone.classList.remove('drop-zone-active');
+            
+            const files = event.dataTransfer.files;
+            addFilesToQueue(files);
+        }
+        
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            addFilesToQueue(files);
+            event.target.value = ''; // Reset input
+        }
+        
+        function addFilesToQueue(files) {
+            const supportedExtensions = ['.pdf', '.docx', '.doc', '.pptx', '.xlsx', '.txt', '.md', '.csv', '.json', '.jsonl', '.html', '.htm', '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp'];
+            
+            for (const file of files) {
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (supportedExtensions.includes(ext)) {
+                    // Check for duplicates
+                    if (!queuedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                        queuedFiles.push(file);
+                    }
+                } else {
+                    showNotification(`Unsupported file format: ${ext}`, 'error');
+                }
+            }
+            
+            updateQueuedFilesUI();
+        }
+        
+        function removeFromQueue(index) {
+            queuedFiles.splice(index, 1);
+            updateQueuedFilesUI();
+        }
+        
+        function clearQueue() {
+            queuedFiles = [];
+            updateQueuedFilesUI();
+        }
+        
+        function updateQueuedFilesUI() {
+            const container = document.getElementById('sidebarQueuedFiles');
+            const indexButton = document.getElementById('sidebarIndexBtn');
+            
+            if (queuedFiles.length > 0) {
+                container.classList.remove('hidden');
+                indexButton.disabled = false;
+            } else {
+                container.classList.add('hidden');
+                indexButton.disabled = true;
+            }
+            
+            // Build list HTML
+            let html = '';
+            queuedFiles.forEach((file, index) => {
+                const icon = getFileIcon(file.name);
+                html += `
+                    <div class="queued-file-item flex items-center gap-2 p-2.5 bg-slate-100 dark:bg-slate-800/30 rounded-lg border border-slate-200 dark:border-slate-700/20 group text-xs">
+                        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fas ${icon} text-primary text-xs"></i>
+                        </div>
+                        <span class="flex-grow truncate text-slate-700 dark:text-slate-300">${escapeHtml(file.name)}</span>
+                        <button onclick="removeFromQueue(${index})" class="text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors flex-shrink-0">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'pdf': 'fa-file-pdf',
+                'doc': 'fa-file-word',
+                'docx': 'fa-file-word',
+                'pptx': 'fa-file-powerpoint',
+                'xlsx': 'fa-file-excel',
+                'txt': 'fa-file-alt',
+                'md': 'fa-file-alt',
+                'json': 'fa-file-code',
+                'jsonl': 'fa-file-code',
+                'csv': 'fa-file-csv',
+                'html': 'fa-file-code',
+                'htm': 'fa-file-code',
+                'png': 'fa-file-image',
+                'jpg': 'fa-file-image',
+                'jpeg': 'fa-file-image',
+                'tiff': 'fa-file-image',
+                'tif': 'fa-file-image',
+                'bmp': 'fa-file-image',
+                'webp': 'fa-file-image'
+            };
+            return icons[ext] || 'fa-file';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-fade-in-down`;
+            
+            const colors = {
+                'info': 'bg-primary text-white',
+                'success': 'bg-tertiary text-white',
+                'error': 'bg-red-500 text-white',
+                'warning': 'bg-secondary text-white'
+            };
+            
+            const icons = {
+                'info': 'fa-info-circle',
+                'success': 'fa-check-circle',
+                'error': 'fa-exclamation-circle',
+                'warning': 'fa-exclamation-triangle'
+            };
+            
+            notification.classList.add(...colors[type].split(' '));
+            notification.innerHTML = `<i class="fas ${icons[type]}"></i><span>${escapeHtml(message)}</span>`;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateY(10px)';
+                notification.style.transition = 'all 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        async function startIndexing() {
+            if (isIndexing || queuedFiles.length === 0) return;
+            
+            isIndexing = true;
+            const indexButton = document.getElementById('sidebarIndexBtn');
+            
+            // Disable button
+            indexButton.disabled = true;
+            indexButton.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Starting...`;
+            
+            const totalFiles = queuedFiles.length;
+            
+            // Create a copy of files to process
+            const filesToProcess = [...queuedFiles];
+            // Clear queue in UI
+            queuedFiles = [];
+            updateQueuedFilesUI();
+            
+            // Add all files to pending documents immediately for visual feedback
+            const fileTrackingMap = new Map(); // file -> tempId
+            filesToProcess.forEach(file => {
+                const tempId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                pendingDocuments.set(tempId, {
+                    url: null,
+                    filename: file.name,
+                    startTime: Date.now()
+                });
+                fileTrackingMap.set(file, tempId);
+            });
+            
+            // Refresh UI to show pending documents
+            await loadSidebarSources();
+            
+            // Hide panel
+            if (isAddSourcePanelOpen) {
+                toggleAddSourcePanel();
+            }
+            
+            // Show notification
+            showNotification(`Indexing ${totalFiles} document(s)... This may take a moment.`, 'info');
+            
+            // Process files in background
+            indexFilesInBackground(filesToProcess, fileTrackingMap, indexButton);
+        }
+        
+        async function indexFilesInBackground(filesToProcess, fileTrackingMap, indexButton) {
+            let successful = 0;
+            let failed = 0;
+            const totalFiles = filesToProcess.length;
+            
+            try {
+                for (let i = 0; i < filesToProcess.length; i++) {
+                    const file = filesToProcess[i];
+                    const tempId = fileTrackingMap.get(file);
+                    
+                    indexButton.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${i + 1}/${totalFiles}`;
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        
+                        const response = await fetch('/documents/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        // Remove from pending
+                        pendingDocuments.delete(tempId);
+                        
+                        if (response.ok) {
+                            successful++;
+                            const result = await response.json();
+                            
+                            // Add to newly added docs for highlighting
+                            if (result.document_id) {
+                                newlyAddedDocIds.add(result.document_id);
+                            }
+                            
+                            // Refresh sources list to show the new file
+                            await loadSidebarSources();
+                            await loadStats();
+                        } else {
+                            failed++;
+                            const error = await response.json();
+                            showNotification(`Failed to index ${file.name}: ${error.detail || 'Error'}`, 'error');
+                            
+                            // Refresh to remove pending item
+                            await loadSidebarSources();
+                        }
+                    } catch (err) {
+                        failed++;
+                        console.error(`Error indexing ${file.name}:`, err);
+                        
+                        // Remove from pending
+                        pendingDocuments.delete(tempId);
+                        await loadSidebarSources();
+                    }
+                }
+                
+                if (successful > 0) {
+                    showNotification(`Successfully indexed ${successful} document(s)!`, 'success');
+                }
+                if (failed > 0 && successful > 0) {
+                    showNotification(`${failed} document(s) failed to index.`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Indexing error:', error);
+                showNotification('Indexing failed: ' + error.message, 'error');
+                
+                // Clear all pending
+                fileTrackingMap.forEach((tempId) => {
+                    pendingDocuments.delete(tempId);
+                });
+                await loadSidebarSources();
+            } finally {
+                isIndexing = false;
+                indexButton.disabled = false;
+                indexButton.innerHTML = t('indexSelected');
             }
         }
     </script>

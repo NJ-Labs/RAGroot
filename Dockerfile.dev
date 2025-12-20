@@ -1,0 +1,194 @@
+# =============================================================================
+# RAG Development Dockerfile with Docling + Tesseract OCR (Hebrew)
+# =============================================================================
+# OPTIMIZED FOR FAST BUILDS:
+# - Uses CUDA runtime instead of devel (smaller image)
+# - Single pip install with all dependencies
+# - Aggressive caching with uv
+# - No duplicate package installations
+# 
+# NOTE: vLLM is now a separate microservice. Configure VLLM_API_URL to point
+# to your vLLM instance. See docker-compose.vllm.yml for running vLLM.
+# =============================================================================
+
+# Use runtime image - smaller and faster to pull (no compiler needed)
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive \
+    # Pre-configure uv for faster installs
+    UV_CONCURRENT_DOWNLOADS=50 \
+    UV_CONCURRENT_BUILDS=4 \
+    UV_COMPILE_BYTECODE=1 \
+    # Python settings
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# =============================================================================
+# System Dependencies (combined into single layer)
+# =============================================================================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build tools (needed for llama-cpp-python)
+    build-essential \
+    cmake \
+    curl \
+    git \
+    # Python 3.11
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    # Image processing libraries (for Docling)
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    # PDF processing
+    poppler-utils \
+    # Tesseract OCR with Hebrew support
+    tesseract-ocr \
+    tesseract-ocr-heb \
+    tesseract-ocr-eng \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    # Setup Python alternatives in same layer
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 \
+    # Install uv in same layer
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    # Create directories
+    && mkdir -p /app/models /app/models/embeddings /app/uploads /app/index /app/data
+
+ENV PATH="/root/.local/bin:/root/.cargo/bin:$PATH"
+
+# =============================================================================
+# Install ALL Python Dependencies in ONE step (maximizes cache efficiency)
+# =============================================================================
+COPY requirements.txt pyproject.toml* /app/
+
+# Install everything at once - uv handles parallelization automatically
+# Note: docling, pytesseract, onnxruntime, and openai are in requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    uv pip install --system --compile-bytecode \
+    -r requirements.txt
+
+# =============================================================================
+# Copy Application Code
+# =============================================================================
+COPY main.py /app/
+COPY utils/ /app/utils/
+COPY static/ /app/static/
+COPY tools/ /app/tools/
+COPY Documentation/ /app/Documentation/
+COPY .env.docker.example /app/.env
+
+# =============================================================================
+# Download Embedding Models (optional - can be mounted instead)
+# =============================================================================
+ENV EMBEDDING_CACHE_DIR=/app/models/embeddings \
+    EMBEDDING_LOCAL_ONLY=false \
+    HF_HOME=/app/models/embeddings \
+    SENTENCE_TRANSFORMERS_HOME=/app/models/embeddings
+
+# Download multilingual-e5-large embedding model for Hebrew/English
+# This step can be skipped if models are mounted via docker-compose
+ARG SKIP_MODEL_DOWNLOAD=false
+RUN if [ "$SKIP_MODEL_DOWNLOAD" = "false" ]; then \
+        python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-large', cache_folder='/app/models/embeddings')"; \
+    else \
+        echo "Skipping model download - models will be mounted at runtime"; \
+    fi
+
+# Verify Tesseract OCR is installed with Hebrew support
+RUN tesseract --list-langs && echo "✅ Tesseract OCR installed with Hebrew support"
+
+# =============================================================================
+# Environment Variables
+# =============================================================================
+ENV DATA_PATH=/app/data \
+    INDEX_DIR=/app/index \
+    UPLOADS_DIR=/app/uploads \
+    # Embedding settings - multilingual-e5-large for best Hebrew support
+    EMBEDDING_MODEL=intfloat/multilingual-e5-large \
+    USE_E5_PREFIX=true \
+    EMBEDDING_CACHE_DIR=/app/models/embeddings \
+    EMBEDDING_LOCAL_ONLY=true \
+    EMBEDDING_BATCH_SIZE=16 \
+    # vLLM settings (external microservice)
+    # Configure VLLM_API_URL to point to your vLLM instance
+    LLM_BACKEND=vllm \
+    VLLM_API_URL=http://localhost:8000/v1 \
+    VLLM_API_TOKEN= \
+    LLM_MODEL_NAME=dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16 \
+    # OCR settings - using Tesseract (heb=Hebrew, eng=English)
+    OCR_ENABLED=true \
+    OCR_LANGUAGES=heb,eng \
+    # Language settings
+    PRIMARY_LANGUAGE=hebrew \
+    BILINGUAL_RESPONSES=false \
+    # Chunking settings
+    CHUNK_SIZE=512 \
+    CHUNK_OVERLAP=50 \
+    # General settings
+    PYTHONUNBUFFERED=1 \
+    CUDA_VISIBLE_DEVICES=0
+
+# =============================================================================
+# Startup Script
+# =============================================================================
+COPY <<'EOF' /app/start.sh
+#!/bin/bash
+set -e
+
+echo "=================================================="
+echo "🚀 Starting RAG Application"
+echo "=================================================="
+echo "vLLM API URL: ${VLLM_API_URL:-http://localhost:8000/v1}"
+echo "LLM Model: ${LLM_MODEL_NAME:-not set}"
+echo "=================================================="
+
+# Check if vLLM is accessible (optional - warn if not available)
+if [ -n "$VLLM_API_URL" ]; then
+    echo "⏳ Checking vLLM connectivity..."
+    # Extract host and port from URL
+    VLLM_HOST=$(echo "$VLLM_API_URL" | sed -e 's|http[s]*://||' -e 's|/.*||' -e 's|:.*||')
+    VLLM_PORT=$(echo "$VLLM_API_URL" | grep -oP ':\K[0-9]+' | head -1)
+    VLLM_PORT=${VLLM_PORT:-8000}
+    
+    if curl -s --connect-timeout 5 "${VLLM_API_URL%/v1}/health" > /dev/null 2>&1; then
+        echo "✅ vLLM server is accessible!"
+    else
+        echo "⚠️  Warning: vLLM server at ${VLLM_API_URL} is not accessible."
+        echo "   Make sure your vLLM microservice is running."
+        echo "   The RAG app will start anyway and retry when queries arrive."
+    fi
+fi
+
+# Start the RAG application
+echo "🔍 Starting RAG application on port 8080..."
+exec python main.py
+EOF
+
+RUN chmod +x /app/start.sh && sed -i 's/\r$//' /app/start.sh
+
+# =============================================================================
+# Expose Ports
+# =============================================================================
+# 8080: RAG Application
+EXPOSE 8080
+
+# =============================================================================
+# Health Check
+# =============================================================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# =============================================================================
+# Entry Point
+# =============================================================================
+CMD ["/app/start.sh"]

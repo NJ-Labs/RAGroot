@@ -1,16 +1,16 @@
 import os
 import sys
 import json
-import hashlib
 import time
 import argparse
+import shutil
 from pathlib import Path
 from typing import List, Dict, Optional
 from contextlib import asynccontextmanager
 import logging
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,7 +18,9 @@ import uvicorn
 
 from utils.indexer import VectorIndexer
 from utils.retriever import RAGPipeline
+from utils.agentic_rag import AgenticRAGPipeline, create_agentic_rag_pipeline
 from utils.image_gen import ImageGenerator
+from utils.document_processor import DoclingProcessor
 
 
 # Setup logging
@@ -28,7 +30,9 @@ logger = logging.getLogger(__name__)
 # Global state
 indexer: Optional[VectorIndexer] = None
 rag_pipeline: Optional[RAGPipeline] = None
+agentic_rag_pipeline: Optional[AgenticRAGPipeline] = None
 image_generator: Optional[ImageGenerator] = None
+doc_processor: Optional[DoclingProcessor] = None
 current_dataset_hash: Optional[str] = None
 
 @asynccontextmanager
@@ -48,7 +52,12 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down application...")
 
 # Initialize FastAPI with lifespan
-app = FastAPI(title="GenAI RAG Application", lifespan=lifespan)
+app = FastAPI(
+    title="GenAI RAG Application",
+    description="Multi-format document RAG with Hebrew/English support powered by Docling",
+    version="2.0.0",
+    lifespan=lifespan
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -81,92 +90,90 @@ class QueryResponse(BaseModel):
     retrieved_context: List[str]
     image_url: Optional[str] = None
     performance_metrics: Optional[Dict] = None
+    detected_language: Optional[str] = None  # "hebrew" or "english"
+    agent_used: Optional[str] = None  # "Hebrew Agent" or "English Agent"
 
-def compute_file_hash(filepath: str) -> str:
-    """Compute SHA256 hash of file to detect changes."""
-    sha256_hash = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
 
 def initialize_system():
     """Initialize the system components."""
-    global indexer, rag_pipeline, image_generator
+    global indexer, rag_pipeline, agentic_rag_pipeline, image_generator, doc_processor
     
     # Import config after it's initialized
     from utils.config import config
     
     # Get paths from utils.config
-    data_path = config.DATA_PATH
     index_dir = config.INDEX_DIR
+    uploads_dir = config.UPLOADS_DIR
     
-    logger.info(f"Initializing system with DATA_PATH: {data_path}")
+    # Create uploads directory
+    Path(uploads_dir).mkdir(parents=True, exist_ok=True)
     
-    if not os.path.exists(data_path):
-        error_msg = f"""
-╔══════════════════════════════════════════════════════════════════════════════╗
-║ ERROR: Dataset not found at {data_path}
-║
-║ Please ensure:
-║ 1. The file exists and the path is correct
-║ 2. You have read permissions for the file
-║ 3. The file is a valid .jsonl file with required fields (id, title, abstract)
-║
-║ For Docker deployments, ensure you mount the dataset:
-║   docker run -v $(pwd)/your-dataset.jsonl:/data/arxiv_2.9k.jsonl:ro ...
-║
-║ For local development:
-║   Place your dataset in: data/arxiv_2.9k.jsonl
-║   Or set DATA_PATH environment variable
-╚══════════════════════════════════════════════════════════════════════════════╝
-        """
-        logger.error(error_msg)
-        raise FileNotFoundError(error_msg)
+    logger.info(f"Uploads directory: {uploads_dir}")
     
-    # Check if dataset or embedding model has changed
-    new_hash = compute_file_hash(data_path)
-    hash_file = Path(index_dir) / "dataset_hash.txt"
-    model_file = Path(index_dir) / "embedding_model.txt"
+    # Initialize document processor for on-demand processing
+    doc_processor = DoclingProcessor(
+        ocr_enabled=config.OCR_ENABLED,
+        ocr_languages=config.OCR_LANGUAGES.split(','),
+        chunk_size=config.CHUNK_SIZE,
+        chunk_overlap=config.CHUNK_OVERLAP,
+        use_gpu=not config.FORCE_CPU
+    )
     
-    needs_reindex = True
-    if hash_file.exists() and model_file.exists():
-        with open(hash_file, 'r') as f:
-            old_hash = f.read().strip()
-        with open(model_file, 'r') as f:
-            old_model = f.read().strip()
-        
-        if old_hash == new_hash and old_model == config.EMBEDDING_MODEL:
-            needs_reindex = False
-            logger.info(f"Dataset and embedding model unchanged, loading existing index")
-        elif old_hash != new_hash:
-            logger.info(f"Dataset changed, rebuilding index...")
-        elif old_model != config.EMBEDDING_MODEL:
-            logger.info(f"Embedding model changed from '{old_model}' to '{config.EMBEDDING_MODEL}', rebuilding index...")
-    
-    # Initialize components
+    # Initialize indexer
     indexer = VectorIndexer(index_dir=index_dir)
     
-    if needs_reindex:
-        logger.info("Building new index...")
-        indexer.build_index(data_path)
-        # Save hash and model name
-        Path(index_dir).mkdir(parents=True, exist_ok=True)
-        with open(hash_file, 'w') as f:
-            f.write(new_hash)
-        with open(model_file, 'w') as f:
-            f.write(config.EMBEDDING_MODEL)
-        logger.info("Index built successfully")
+    # Check for existing index (previously indexed documents)
+    index_path = Path(index_dir) / "faiss.index"
+    
+    if index_path.exists():
+        # Load existing index from previously uploaded documents
+        logger.info("Loading existing index from previously uploaded documents...")
+        try:
+            indexer.load_index()
+            logger.info(f"Index loaded: {indexer.get_index_size()}")
+        except Exception as e:
+            logger.error(f"Failed to load index: {e}")
+            logger.info("Starting with empty index - upload documents to populate")
     else:
-        logger.info("Loading existing index...")
-        indexer.load_index()
-        logger.info("Index loaded successfully")
+        logger.info("No existing index found - upload documents to populate the index")
     
+    # Initialize legacy RAG pipeline (for backward compatibility)
     rag_pipeline = RAGPipeline(indexer)
-    image_generator = ImageGenerator()
-    current_dataset_hash = new_hash
     
-    logger.info("System initialized successfully")
+    # Initialize Agentic RAG Pipeline with Hebrew/English agents
+    logger.info("Initializing Agentic RAG Pipeline with language-specific agents...")
+    agentic_rag_pipeline = create_agentic_rag_pipeline(indexer)
+    
+    # Test LLM connectivity
+    logger.info("Testing LLM endpoint connectivity...")
+    try:
+        llm_test = agentic_rag_pipeline.llm_backend.test_connection()
+        
+        if llm_test.get("success"):
+            logger.info(f"✓ LLM connectivity test PASSED: {llm_test.get('message')}")
+            if llm_test.get("test_response"):
+                logger.info(f"  Test response: {llm_test.get('test_response')}")
+            if llm_test.get("streaming_status") == "working":
+                logger.info("  ✓ Streaming is working")
+            elif llm_test.get("streaming_warning"):
+                logger.warning(f"  ⚠ {llm_test.get('streaming_warning')}")
+            if llm_test.get("available_models"):
+                logger.info(f"  Available models: {llm_test.get('available_models')}")
+        else:
+            logger.error(f"✗ LLM connectivity test FAILED: {llm_test.get('message')}")
+            if llm_test.get("error"):
+                logger.error(f"  Error details: {llm_test.get('error')}")
+            if llm_test.get("health_check"):
+                logger.info(f"  Health check: {llm_test.get('health_check')}")
+            logger.warning("  The system will start but queries may fail. Check your LLM configuration.")
+            
+    except Exception as e:
+        logger.error(f"✗ LLM connectivity test failed with exception: {e}")
+        logger.warning("  The system will start but queries may fail.")
+    
+    image_generator = ImageGenerator()
+    
+    logger.info("System initialized successfully with Agentic RAG (Hebrew + English agents)")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -190,22 +197,263 @@ async def health_check():
     return {
         "status": "healthy",
         "indexed_documents": len(indexer.documents) if indexer else 0,
-        "dataset_hash": current_dataset_hash
+        "indexed_chunks": len(indexer.chunks) if indexer else 0,
+        "index_stats": indexer.get_index_size() if indexer else {}
     }
 
-@app.post("/answer", response_model=QueryResponse)
-async def answer_query(request: QueryRequest):
-    """Answer a query using RAG."""
-    if not rag_pipeline:
+
+# =============================================================================
+# DOCUMENT UPLOAD AND MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@app.post("/documents/upload")
+async def upload_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+):
+    """
+    Upload and index a document.
+    
+    Supports: PDF, DOCX, PPTX, XLSX, HTML, images (PNG, JPEG, TIFF), 
+    Markdown, TXT, CSV, JSON, JSONL
+    """
+    if not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    from utils.config import config
+    
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    supported = config.SUPPORTED_FORMATS.split(',')
+    
+    if file_ext not in supported:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format: {file_ext}. Supported: {supported}"
+        )
+    
+    try:
+        # Save uploaded file
+        uploads_dir = Path(config.UPLOADS_DIR)
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate unique filename
+        timestamp = int(time.time() * 1000)
+        safe_filename = f"{timestamp}_{file.filename}"
+        file_path = uploads_dir / safe_filename
+        
+        # Write file to disk
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        
+        logger.info(f"Uploaded file saved: {file_path}")
+        
+        # Index the document
+        processed_doc = indexer.index_document(str(file_path))
+        
+        return {
+            "status": "success",
+            "message": f"Document '{file.filename}' indexed successfully",
+            "document_id": processed_doc.document_id,
+            "filename": processed_doc.filename,
+            "chunks_created": len(processed_doc.chunks),
+            "language": processed_doc.language,
+            "file_type": processed_doc.file_type
+        }
+        
+    except Exception as e:
+        logger.error(f"Error uploading document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/documents/upload-multiple")
+async def upload_multiple_documents(
+    files: List[UploadFile] = File(...)
+):
+    """Upload and index multiple documents at once."""
+    if not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    from utils.config import config
+    
+    results = []
+    supported = config.SUPPORTED_FORMATS.split(',')
+    uploads_dir = Path(config.UPLOADS_DIR)
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    
+    saved_paths = []
+    
+    # First, save all files
+    for file in files:
+        file_ext = Path(file.filename).suffix.lower()
+        
+        if file_ext not in supported:
+            results.append({
+                "filename": file.filename,
+                "status": "error",
+                "error": f"Unsupported format: {file_ext}"
+            })
+            continue
+        
+        try:
+            timestamp = int(time.time() * 1000)
+            safe_filename = f"{timestamp}_{file.filename}"
+            file_path = uploads_dir / safe_filename
+            
+            with open(file_path, "wb") as f:
+                content = await file.read()
+                f.write(content)
+            
+            saved_paths.append((file.filename, str(file_path)))
+            
+        except Exception as e:
+            results.append({
+                "filename": file.filename,
+                "status": "error",
+                "error": str(e)
+            })
+    
+    # Index all saved files
+    if saved_paths:
+        try:
+            paths_only = [p for _, p in saved_paths]
+            processed_docs = indexer.index_documents(paths_only)
+            
+            for (orig_name, _), doc in zip(saved_paths, processed_docs):
+                results.append({
+                    "filename": orig_name,
+                    "status": "success",
+                    "document_id": doc.document_id,
+                    "chunks_created": len(doc.chunks),
+                    "language": doc.language
+                })
+        except Exception as e:
+            for orig_name, _ in saved_paths:
+                results.append({
+                    "filename": orig_name,
+                    "status": "error",
+                    "error": str(e)
+                })
+    
+    return {
+        "status": "completed",
+        "total_files": len(files),
+        "successful": sum(1 for r in results if r.get("status") == "success"),
+        "failed": sum(1 for r in results if r.get("status") == "error"),
+        "results": results
+    }
+
+
+class UrlRequest(BaseModel):
+    url: str
+
+@app.post("/documents/index-url")
+async def index_url(request: UrlRequest):
+    """Index a document from a URL."""
+    if not indexer:
         raise HTTPException(status_code=503, detail="System not initialized")
     
     try:
-        start_time = time.time()
-        logger.info(f"Processing query: {request.query}")
+        logger.info(f"Indexing URL: {request.url}")
+        processed_doc = indexer.index_document(request.url)
         
-        # Retrieve and generate answer with timing
+        return {
+            "status": "success",
+            "message": f"URL indexed successfully",
+            "document_id": processed_doc.document_id,
+            "filename": processed_doc.filename,
+            "chunks_created": len(processed_doc.chunks),
+            "language": processed_doc.language
+        }
+    except Exception as e:
+        logger.error(f"Error indexing URL: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/documents")
+async def list_documents():
+    """List all indexed documents."""
+    if not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    return {
+        "documents": indexer.get_document_list(),
+        "total_documents": len(indexer.documents),
+        "total_chunks": len(indexer.chunks)
+    }
+
+
+@app.delete("/documents/{document_id}")
+async def delete_document(document_id: str):
+    """Remove a document from the index."""
+    if not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    success = indexer.remove_document(document_id)
+    
+    if success:
+        return {
+            "status": "success",
+            "message": f"Document {document_id} removed from index"
+        }
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Document {document_id} not found in index"
+        )
+
+
+@app.delete("/documents")
+async def clear_all_documents():
+    """Clear all documents from the index."""
+    if not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    indexer.clear_index()
+    
+    return {
+        "status": "success",
+        "message": "All documents cleared from index"
+    }
+
+
+@app.get("/documents/supported-formats")
+async def get_supported_formats():
+    """Get list of supported file formats."""
+    from utils.config import config
+    from utils.document_processor import DoclingProcessor
+    
+    return {
+        "supported_formats": config.SUPPORTED_FORMATS.split(','),
+        "format_categories": {
+            "documents": [".pdf", ".docx", ".doc", ".pptx", ".xlsx"],
+            "text": [".txt", ".md", ".csv", ".json", ".jsonl"],
+            "web": [".html", ".htm"],
+            "images": [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"]
+        },
+        "ocr_enabled": config.OCR_ENABLED,
+        "ocr_languages": config.OCR_LANGUAGES.split(',')
+    }
+
+
+# =============================================================================
+# RAG QUERY ENDPOINTS
+# =============================================================================
+
+@app.post("/answer", response_model=QueryResponse)
+async def answer_query(request: QueryRequest):
+    """Answer a query using Agentic RAG with language-specific agents."""
+    if not agentic_rag_pipeline:
+        raise HTTPException(status_code=503, detail="Agentic RAG system not initialized")
+    
+    try:
+        start_time = time.time()
+        logger.info(f"Processing query with Agentic RAG: {request.query}")
+        
+        # Use Agentic RAG Pipeline with automatic language detection and routing
         retrieval_start = time.time()
-        result = rag_pipeline.answer_query(
+        result = agentic_rag_pipeline.answer_query(
             query=request.query,
             top_k=request.top_k
         )
@@ -213,27 +461,35 @@ async def answer_query(request: QueryRequest):
         
         total_time = time.time() - start_time
         
-        # Build performance metrics (without image generation time)
+        # Determine which agent was used
+        detected_language = result.get("language", "english")
+        agent_used = "Hebrew Agent" if detected_language == "hebrew" else "English Agent"
+        
+        # Build performance metrics
         performance_metrics = {
             "total_time_ms": round(total_time * 1000, 2),
             "retrieval_time_ms": round(retrieval_time * 1000, 2),
             "documents_retrieved": len(result["citations"]),
-            "answer_length_words": len(result["answer"].split())
+            "answer_length_words": len(result["answer"].split()),
+            "agent_used": agent_used,
+            "detected_language": detected_language
         }
         
-        logger.info(f"Query completed in {total_time:.2f}s (retrieval: {retrieval_time:.2f}s)")
+        logger.info(f"Query completed in {total_time:.2f}s using {agent_used}")
         
-        # Return answer immediately - image will be generated separately
+        # Return answer with agent information
         return QueryResponse(
             answer=result["answer"],
             citations=result["citations"],
             retrieved_context=result["retrieved_context"],
             image_url=None,  # Image URL will be fetched separately
-            performance_metrics=performance_metrics
+            performance_metrics=performance_metrics,
+            detected_language=detected_language,
+            agent_used=agent_used
         )
     
     except Exception as e:
-        logger.error(f"Error processing query: {e}")
+        logger.error(f"Error processing query with Agentic RAG: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 class ImageRequest(BaseModel):
@@ -292,16 +548,16 @@ async def generate_image_endpoint(request: ImageRequest):
 
 @app.post("/stream")
 async def stream_answer(request: QueryRequest):
-    """Stream answer generation (bonus endpoint)."""
-    if not rag_pipeline:
-        raise HTTPException(status_code=503, detail="System not initialized")
+    """Stream answer generation using Agentic RAG with language-specific agents."""
+    if not agentic_rag_pipeline:
+        raise HTTPException(status_code=503, detail="Agentic RAG system not initialized")
     
-    logger.info(f"Starting stream for query: {request.query}")
+    logger.info(f"Starting Agentic RAG stream for query: {request.query}")
     
     async def generate():
         try:
             chunk_count = 0
-            async for chunk in rag_pipeline.stream_answer(
+            async for chunk in agentic_rag_pipeline.stream_answer(
                 query=request.query,
                 top_k=request.top_k
             ):
@@ -309,9 +565,9 @@ async def stream_answer(request: QueryRequest):
                 data = f"data: {json.dumps(chunk)}\n\n"
                 logger.debug(f"Streaming chunk #{chunk_count}: {chunk.get('type', 'unknown')}")
                 yield data
-            logger.info(f"Stream completed with {chunk_count} chunks")
+            logger.info(f"Agentic RAG stream completed with {chunk_count} chunks")
         except Exception as e:
-            logger.error(f"Streaming error: {e}", exc_info=True)
+            logger.error(f"Agentic RAG streaming error: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
     
     return StreamingResponse(
@@ -336,6 +592,36 @@ async def get_stats():
         "index_size": indexer.get_index_size(),
         "embedding_dimension": indexer.embedding_dim
     }
+
+
+@app.get("/health/llm")
+async def test_llm_health():
+    """Test LLM endpoint connectivity and return detailed status."""
+    if not agentic_rag_pipeline:
+        raise HTTPException(status_code=503, detail="Agentic RAG system not initialized")
+    
+    try:
+        result = agentic_rag_pipeline.llm_backend.test_connection()
+        
+        # Add timestamp
+        result["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        if result.get("success"):
+            return JSONResponse(content=result, status_code=200)
+        else:
+            return JSONResponse(content=result, status_code=503)
+            
+    except Exception as e:
+        logger.error(f"LLM health check failed: {e}", exc_info=True)
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": f"Health check failed: {str(e)}",
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            },
+            status_code=503
+        )
+
 
 def run_cli():
     """Command-line interface for the GenAI RAG application."""
@@ -408,7 +694,7 @@ Examples:
     
     elif args.command == 'query':
         print("\n" + "="*70)
-        print("🔍 Querying RAG System")
+        print("🔍 Querying Agentic RAG System (Hebrew/English)")
         print("="*70)
         print(f"Query: {args.query}")
         print(f"Top-K: {args.top_k}")
@@ -419,9 +705,9 @@ Examples:
         indexer = VectorIndexer(index_dir=args.index_dir)
         indexer.load_index()
         
-        # Initialize pipeline
+        # Initialize Agentic RAG pipeline
         os.environ['MODEL_PATH'] = args.model
-        rag_pipeline = RAGPipeline(indexer)
+        agentic_pipeline = create_agentic_rag_pipeline(indexer)
         
         if args.stream:
             # Streaming mode
@@ -432,9 +718,9 @@ Examples:
                 citations = []
                 context = []
                 
-                print("📡 Streaming response...\n")
+                print("📡 Streaming response with Agentic RAG...\n")
                 
-                async for chunk in rag_pipeline.stream_answer(args.query, top_k=args.top_k):
+                async for chunk in agentic_pipeline.stream_answer(args.query, top_k=args.top_k):
                     chunk_type = chunk.get('type')
                     content = chunk.get('content')
                     
@@ -471,10 +757,16 @@ Examples:
             
             asyncio.run(stream_query())
         else:
-            # Standard mode (non-streaming)
-            result = rag_pipeline.answer_query(args.query, top_k=args.top_k)
+            # Standard mode (non-streaming) with Agentic RAG
+            result = agentic_pipeline.answer_query(args.query, top_k=args.top_k)
             
-            print("\n📝 Answer:")
+            # Show which agent was used
+            detected_lang = result.get('language', 'english')
+            agent_name = "Hebrew Agent 🇮🇱" if detected_lang == "hebrew" else "English Agent 🇬🇧"
+            print(f"🤖 Agent Used: {agent_name}")
+            print(f"🌐 Detected Language: {detected_lang.capitalize()}\n")
+            
+            print("📝 Answer:")
             print("-" * 70)
             print(result['answer'])
             print("-" * 70)

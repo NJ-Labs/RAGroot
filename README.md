@@ -3,19 +3,24 @@
   
   # **RAGroot** - *Academic Research Assistant*
   
-  A fully self-contained Retrieval-Augmented Generation (RAG) system for querying academic abstracts using local LLMs and vector search.
+  A fully self-contained Retrieval-Augmented Generation (RAG) system with **Agentic Architecture** for querying multi-format documents using local LLMs and vector search. Supports **Hebrew** and **English** with automatic language detection.
 </div>
 
 ## 🚀 Features
 
+- **Agentic RAG Architecture**: LangGraph-powered workflow with specialized Hebrew and English agents
+- **Multi-Format Document Support**: PDF, DOCX, PPTX, XLSX, HTML, images via IBM Docling
+- **Bilingual Support**: Automatic Hebrew/English language detection with language-specific responses
 - **Fully On-Premise**: All core components run locally inside Docker
 - **Offline Operation**: All embedding models can be stored locally for air-gapped deployment
 - **Vector Search**: FAISS-based semantic search with sentence-transformers
-- **Local LLM**: Llama-3.2-3B-Instruct-Q4_K_M for efficient CPU inference
+- **Local LLM**: Llama-3.2-3B-Instruct-Q4_K_M or Qwen3-4B for efficient CPU inference
 - **Web UI**: Clean, modern interface for querying and viewing results
 - **REST API**: `/answer` and `/stream` endpoints for programmatic access
 - **Smart Indexing**: Automatic detection of dataset changes with hash-based caching
-- **Bonus: Image Generation**: Optional integration with local model (SDXL), Pollinations.ai (free), or OpenAI DALL-E
+- **URL Processing**: Robust HTTP fetching with retries and fallback extraction
+- **OCR Support**: Tesseract and RapidOCR for scanned documents
+- **Bonus: Image Generation**: Optional integration with local model (SDXL/SD3.5), Pollinations.ai (free), or OpenAI DALL-E
 
 ## 📋 Requirements
 
@@ -26,30 +31,131 @@
 
 ## 🏗️ Architecture
 
+```mermaid
+flowchart TB
+    subgraph ingestion["📥 DOCUMENT INGESTION"]
+        dataset["📄 Dataset<br/>(.jsonl)"]
+        docs["📑 PDFs/DOCX/etc"]
+        urls["🌐 URLs<br/>(HTTP fetch + fallback)"]
+        
+        dataset --> docling
+        docs --> docling
+        urls --> docling
+        
+        docling["⚙️ Docling Processor<br/>(OCR + Chunking)"]
+    end
+    
+    docling --> indexer["🔍 Indexer<br/>(sentence-transformers + FAISS)"]
+    
+    subgraph agentic["🤖 AGENTIC RAG (LangGraph)"]
+        detector["🔤 Language<br/>Detector"]
+        router{"🔀 Router"}
+        hebrew["🇮🇱 Hebrew Agent<br/>(עברית)"]
+        english["🇺🇸 English Agent<br/>(English)"]
+        llm["💬 LLM Backend<br/>• llama.cpp (local)<br/>• vLLM (microservice)"]
+        
+        detector --> router
+        router -->|Hebrew| hebrew
+        router -->|English| english
+        hebrew --> llm
+        english --> llm
+    end
+    
+    indexer --> detector
+    
+    llm --> webui["🖥️ Web UI<br/>(FastAPI)"]
+    webui -.->|Optional| imagegen["🎨 Image Gen<br/>(SDXL/SD3.5)"]
+    
+    style ingestion fill:#e1f5fe,stroke:#01579b
+    style agentic fill:#f3e5f5,stroke:#7b1fa2
+    style docling fill:#fff3e0,stroke:#e65100
+    style indexer fill:#e8f5e9,stroke:#2e7d32
+    style llm fill:#fce4ec,stroke:#c2185b
+    style webui fill:#e0f2f1,stroke:#00695c
 ```
-┌─────────────┐
-│   Dataset   │ (.jsonl)
-│ (abstracts) │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Indexer    │ (sentence-transformers + FAISS)
-│  Embeddings │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐      ┌──────────────┐
-│  Retriever  │ ───▶ │   Local LLM  │ (Llama-3.2-3B)
-│  (RAG)      │      │  (llama.cpp) │
-└──────┬──────┘      └──────────────┘
-       │
-       ▼
-┌─────────────┐      ┌──────────────┐
-│   Web UI    │      │  Image Gen   │ (Optional)
-│   (FastAPI) │ ───▶ │ (External)   │
-└─────────────┘      └──────────────┘
+
+### LLM Backend Options
+
+The RAG application supports two LLM backends:
+
+1. **llama.cpp** (default) - Local GGUF models, runs inside the app container
+2. **vLLM** - External microservice for larger models (recommended for production)
+
+#### vLLM Microservice Architecture
+
+For production or when using larger models like DictaLM, vLLM runs as a separate microservice:
+
+```mermaid
+flowchart LR
+    subgraph rag["RAG App (Port 8080)"]
+        doc["Document proc"]
+        emb["Embeddings"]
+        ret["Retrieval"]
+    end
+    
+    subgraph vllm["vLLM Server (Port 8000)"]
+        serve["Model serving"]
+        gpu["GPU inference"]
+        batch["Batching"]
+    end
+    
+    rag -->|"HTTP API"| vllm
+    
+    style rag fill:#e3f2fd,stroke:#1565c0
+    style vllm fill:#fff8e1,stroke:#f9a825
 ```
+
+Configure via environment variables:
+- `LLM_BACKEND=vllm` - Use vLLM backend
+- `VLLM_API_URL=http://localhost:8000/v1` - vLLM server URL
+- `VLLM_API_TOKEN=` - Optional auth token (empty for local)
+
+### Agentic RAG Architecture (New!)
+
+The system uses **LangGraph** for workflow orchestration with specialized agents:
+
+1. **Language Detection Router** - Automatically detects if query is Hebrew or English
+2. **Hebrew Agent** - Processes Hebrew queries and responds in Hebrew (עברית)
+3. **English Agent** - Processes English queries and responds in English
+4. **DSPy Integration** - Optimized prompt generation for concise, citation-rich answers
+
+```mermaid
+flowchart LR
+    query["👤 User Query"] --> detect["🔤 Language<br/>Detection"]
+    detect --> router["🔀 Router"]
+    router --> agent["🤖 Hebrew/English<br/>Agent"]
+    agent --> response["📝 Response"]
+    
+    router -.-> retrieval["📚 Document<br/>Retrieval (FAISS)"]
+    retrieval -.-> agent
+    
+    style query fill:#e8f5e9,stroke:#2e7d32
+    style response fill:#e8f5e9,stroke:#2e7d32
+    style agent fill:#f3e5f5,stroke:#7b1fa2
+```
+
+**Key Features:**
+- Automatic language detection based on Unicode character analysis
+- Language-specific system prompts for culturally appropriate responses
+- Shared retrieval system with language-aware response generation
+- Support for mixed-language documents with Hebrew and English content
+
+### Document Processing with Docling (New!)
+
+Supported document formats via IBM Docling:
+
+| Format | Extensions | OCR Support |
+|--------|------------|-------------|
+| PDF | `.pdf` | ✅ Tesseract/RapidOCR |
+| Word | `.docx`, `.doc` | N/A |
+| PowerPoint | `.pptx`, `.ppt` | N/A |
+| Excel | `.xlsx`, `.xls` | N/A |
+| HTML | `.html`, `.htm` | N/A |
+| Images | `.png`, `.jpg`, `.tiff` | ✅ |
+| Markdown | `.md` | N/A |
+| URLs | `http://`, `https://` | ✅ (with fallback) |
+
+**Fallback Extraction:** When Docling OCR fails, the system automatically falls back to PyMuPDF for robust PDF text extraction (especially good for Hebrew embedded fonts).
 
 ## 🛠️ Quick Start
 
@@ -67,11 +173,48 @@ docker build -t navedanan/genai-app:latest .
 
 ### 2. Run the Application
 
+**Option A: With local llama.cpp (smaller models)**
 ```bash
 docker run --rm -p 8080:8080 \
   -e DATA_PATH=/data/arxiv_2.9k.jsonl \
   -v $(pwd)/arxiv_2.9k.jsonl:/data/arxiv_2.9k.jsonl:ro \
   navedanan/genai-app:latest
+```
+
+**Option B: With vLLM microservice (larger models, recommended)**
+
+Using docker-compose (easiest):
+```bash
+# Start both vLLM and RAG app together
+docker compose -f docker-compose.vllm.yml up -d
+
+# Or start vLLM separately
+docker compose -f docker-compose.vllm.yml up -d vllm
+
+# Then run RAG app pointing to vLLM
+docker run --rm -p 8080:8080 \
+  -e LLM_BACKEND=vllm \
+  -e VLLM_API_URL=http://host.docker.internal:8000/v1 \
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/index:/app/index \
+  ragroot:latest
+```
+
+Using standalone vLLM:
+```bash
+# Start vLLM server (requires GPU)
+vllm serve dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16 \
+  --port 8000 \
+  --trust-remote-code \
+  --max-model-len 4096 \
+  --gpu-memory-utilization 0.85
+
+# Run RAG app with vLLM backend
+docker run --rm -p 8080:8080 \
+  -e LLM_BACKEND=vllm \
+  -e VLLM_API_URL=http://host.docker.internal:8000/v1 \
+  -e LLM_MODEL_NAME=dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16 \
+  ragroot:latest
 ```
 
 ### 3. Access the Application
@@ -101,23 +244,29 @@ http://127.0.0.1:8080
 RAG_PDF/
 ├── Dockerfile                      # Docker configuration
 ├── docker-compose.yml              # Docker Compose configuration
+├── docker-compose.dev.yml          # Development Docker Compose
+├── docker-compose.vllm.yml         # vLLM microservice configuration
 ├── requirements.txt                # Python dependencies
 ├── pyproject.toml                  # Python project configuration
 ├── README.md                       # This file
 ├── DEPLOYMENT_CHECKLIST.md         # Deployment checklist
-├── main.py                         # FastAPI application
+├── PERFORMANCE_ANALYSIS.md         # Performance benchmarks
+├── main.py                         # FastAPI application (v2.0)
 ├── data/
 │   └── arxiv_2.9k.jsonl           # Dataset file
 ├── Documentation/
 │   ├── ARCHITECTURE.md             # System design and components
 │   ├── CONFIGURATION.md            # Configuration options
 │   ├── DOCKER_DEPLOYMENT.md        # Docker deployment guide
+│   ├── DOCLING_RAG.md              # Docling integration guide
 │   ├── IMAGE_GENERATION.md         # Image generation setup
 │   ├── LATEX_UTILS.md              # LaTeX utilities documentation
 │   ├── OFFLINE_SETUP.md            # Offline/air-gapped deployment
 │   └── QUICKSTART.md               # Quick start guide
 ├── index/
-│   ├── dataset_hash.txt            # Dataset hash for change detection
+│   ├── chunks.json                 # Document chunks storage
+│   ├── documents.json              # Document metadata
+│   ├── document_hashes.json        # Hash-based change detection
 │   ├── embeddings.npy              # Cached embeddings
 │   └── faiss.index                 # FAISS vector index
 ├── models/
@@ -142,9 +291,12 @@ RAG_PDF/
 │   ├── download_models.py          # Model download utility
 │   ├── sample_generator.py         # Sample data generator
 │   └── validate_offline.py         # Offline setup validator
+├── uploads/                        # Uploaded documents storage
 └── utils/
     ├── __init__.py                 # Utils package init
+    ├── agentic_rag.py              # Agentic RAG with LangGraph
     ├── config.py                   # Configuration management
+    ├── document_processor.py       # Docling document processing
     ├── encoders.py                 # Text encoding utilities
     ├── image_gen.py                # Image generation utilities
     ├── indexer.py                  # Vector indexing (FAISS)
@@ -160,7 +312,11 @@ RAG_PDF/
 |----------|---------|-------------|
 | `DATA_PATH` | `/data/arxiv_2.9k.jsonl` | Path to dataset file |
 | `INDEX_DIR` | `/app/index` | Directory for vector index |
-| `MODEL_PATH` | `/app/models/llama-model.gguf` | Path to LLM model |
+| `LLM_BACKEND` | `llama_cpp` | LLM backend: `llama_cpp` or `vllm` |
+| `MODEL_PATH` | `/app/models/llama-model.gguf` | Path to LLM model (for llama_cpp) |
+| `VLLM_API_URL` | `http://localhost:8000/v1` | vLLM server URL (for vllm backend) |
+| `VLLM_API_TOKEN` | (empty) | Auth token for vLLM (empty for local) |
+| `LLM_MODEL_NAME` | `dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16` | Model name for vLLM |
 | `IMAGE_API_PROVIDER` | `pollinations` | Image generation provider |
 | `IMAGE_API_KEY` | (empty) | API key for OpenAI (if using) |
 
@@ -207,10 +363,12 @@ Query the system and get a complete answer.
 {
   "answer": "Recent advances in transformers include...",
   "citations": [
-    {"doc_id": "2509.01234", "title": "A New Approach to Transformers"}
+    {"doc_id": "2509.01234", "title": "A New Approach to Transformers", "authors": "..."}
   ],
   "retrieved_context": ["Abstract text..."],
-  "image_url": null
+  "image_url": null,
+  "detected_language": "english",
+  "agent_used": "English Agent"
 }
 ```
 
@@ -238,6 +396,35 @@ Get indexing statistics.
 
 ```bash
 curl http://localhost:8080/stats
+```
+
+### POST `/upload`
+Upload and process a document (PDF, DOCX, etc.).
+
+```bash
+curl -X POST http://localhost:8080/upload \
+  -F "file=@document.pdf" \
+  -F "language=auto"
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "document_id": "abc123...",
+  "filename": "document.pdf",
+  "chunks_created": 15,
+  "detected_language": "hebrew"
+}
+```
+
+### POST `/process-url`
+Process a document from a URL.
+
+```bash
+curl -X POST http://localhost:8080/process-url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://arxiv.org/pdf/2301.00001.pdf"}'
 ```
 
 ## 🎯 Dataset Format
@@ -406,12 +593,14 @@ EMBEDDING_MODEL=allenai/specter2_base
 EMBEDDING_MODEL=all-mpnet-base-v2  # Default
 ```
 
-### LLM Model
-- **Model**: Llama-3.2-3B-Instruct-Q4_K_M
-- **Size**: ~2.4GB
-- **Context**: 131K tokens (131072)
-- **Speed**: ~10-20 tokens/sec on CPU (4 cores)
-- **Note**: Extended context window supports longer document processing
+### LLM Models
+
+| Model | Size | Context | Speed (CPU) | Best For |
+|-------|------|---------|-------------|----------|
+| Llama-3.2-3B-Instruct-Q4_K_M | ~2.4GB | 131K tokens | ~10-20 tok/s | General use |
+| Qwen3-4B-Instruct-2507-Q4_K_M | ~2.6GB | 32K tokens | ~8-15 tok/s | Multilingual |
+
+**Note**: Extended context window supports longer document processing. Use `MODEL_PATH` environment variable to switch models.
 
 
 ## 🎨 Web UI Features
@@ -494,11 +683,16 @@ Copyright (c) 2025 Naved Danan
 
 ## 🙏 Acknowledgments
 
+- **LangGraph**: Agentic workflow orchestration
+- **LangChain**: Agent building and chain composition
+- **DSPy**: Prompt optimization framework
+- **IBM Docling**: Multi-format document processing
 - **sentence-transformers**: Semantic embeddings
 - **FAISS**: Efficient vector search
 - **llama.cpp**: Efficient LLM inference
-- **Llama-3.2**: Meta's efficient language model
-- **Stable Diffusion**: Local image generation
+- **Llama-3.2 / Qwen3**: Efficient language models
+- **Stable Diffusion**: Local image generation (SDXL/SD3.5)
+- **PyMuPDF**: Robust PDF text extraction
 - **Pollinations.ai**: Free image generation API
 - **FastAPI**: Modern web framework
 

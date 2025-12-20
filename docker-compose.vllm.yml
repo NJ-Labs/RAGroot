@@ -1,0 +1,114 @@
+# =============================================================================
+# Docker Compose for RAG Application + vLLM Microservice
+# =============================================================================
+# This compose file runs:
+# 1. vLLM as a separate GPU-accelerated inference server
+# 2. RAG application that connects to vLLM via HTTP API
+#
+# Usage:
+#   docker compose -f docker-compose.vllm.yml build  # First time: downloads models
+#   docker compose -f docker-compose.vllm.yml up -d
+#
+# Prerequisites for vLLM:
+#   DictaLM model should be pre-downloaded in ./models/embeddings/hub/
+#   - models/embeddings/hub/models--dicta-il--DictaLM-3.0-Nemotron-12B-Instruct-W4A16
+#
+# Note: E5-Large embedding model is downloaded during RAG image build.
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # vLLM Inference Server (GPU Required)
+  # ===========================================================================
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-server
+    environment:
+      # Use locally downloaded model from mounted cache
+      - HF_HUB_OFFLINE=1
+      # CUDA settings
+      - CUDA_VISIBLE_DEVICES=0
+    command: >
+      --model dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16
+      --trust-remote-code
+      --max-model-len 4096
+      --gpu-memory-utilization 0.85
+      --enforce-eager
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount local model cache (read-only) - vLLM uses HF cache structure
+      - ./models/embeddings/hub:/root/.cache/huggingface/hub:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    shm_size: "16gb"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s  # vLLM takes time to load models
+    restart: unless-stopped
+
+  # ===========================================================================
+  # RAG Application (Embeddings + Document Processing)
+  # ===========================================================================
+  rag:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        # Download embedding model during build (baked into image)
+        SKIP_MODEL_DOWNLOAD: "false"
+    container_name: rag-app
+    environment:
+      # vLLM connection settings
+      - LLM_BACKEND=vllm
+      - VLLM_API_URL=http://vllm:8000/v1
+      - VLLM_API_TOKEN=${VLLM_API_TOKEN:-}
+      - LLM_MODEL_NAME=dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16
+      # Embedding settings - use locally mounted model
+      - EMBEDDING_MODEL=intfloat/multilingual-e5-large
+      - EMBEDDING_CACHE_DIR=/app/models/embeddings
+      - EMBEDDING_LOCAL_ONLY=true
+      # HuggingFace cache settings - all point to same location
+      - HF_HOME=/app/models/embeddings
+      - HUGGINGFACE_HUB_CACHE=/app/models/embeddings
+      - SENTENCE_TRANSFORMERS_HOME=/app/models/embeddings
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      # Application settings
+      - PRIMARY_LANGUAGE=hebrew
+      - OCR_ENABLED=true
+      - OCR_LANGUAGES=heb,eng
+      # GPU for embeddings
+      - CUDA_VISIBLE_DEVICES=0
+    ports:
+      - "8080:8080"
+    volumes:
+      # Uploads and index are read-write (models are baked into image)
+      - ./uploads:/app/uploads
+      - ./index:/app/index
+    depends_on:
+      vllm:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    shm_size: "4gb"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped

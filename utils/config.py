@@ -24,24 +24,63 @@ class Config:
     # DATA CONFIGURATION
     # =============================================================================
     
-    DATA_PATH: str = os.getenv("DATA_PATH", "data/arxiv_2.9k.jsonl")
+    # DATA_PATH is empty by default - the app only indexes user-uploaded documents
+    DATA_PATH: str = os.getenv("DATA_PATH", "")
     INDEX_DIR: str = os.getenv("INDEX_DIR", "index")
+    UPLOADS_DIR: str = os.getenv("UPLOADS_DIR", "uploads")
+    
+    # =============================================================================
+    # DOCUMENT PROCESSING (DOCLING)
+    # =============================================================================
+    
+    # OCR Configuration
+    OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "true").lower() == "true"
+    OCR_LANGUAGES: str = os.getenv("OCR_LANGUAGES", "heb,eng")  # Comma-separated
+    
+    # Chunking Configuration
+    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "512"))  # Target chunk size in tokens
+    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "50"))  # Overlap between chunks
+    
+    # Supported input types
+    SUPPORTED_FORMATS: str = os.getenv(
+        "SUPPORTED_FORMATS",
+        ".pdf,.docx,.doc,.pptx,.xlsx,.html,.htm,.md,.txt,.csv,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.json,.jsonl"
+    )
     
     # =============================================================================
     # LLM MODEL CONFIGURATION
     # =============================================================================
     
+    # LLM Backend: "llama_cpp" for local GGUF models, "vllm" for vLLM API
+    LLM_BACKEND: str = os.getenv("LLM_BACKEND", "llama_cpp")
+    
+    # For llama.cpp backend (local GGUF models)
     MODEL_PATH: str = os.getenv("MODEL_PATH", "models/llama-model.gguf")
     N_THREADS: int = int(os.getenv("N_THREADS", "4"))
     N_CTX: int = int(os.getenv("N_CTX", "4096"))
     N_GPU_LAYERS: int = int(os.getenv("N_GPU_LAYERS", "0"))
     
+    # For vLLM backend (OpenAI-compatible API)
+    # VLLM_API_URL: The URL of the vLLM server (external microservice)
+    VLLM_API_URL: str = os.getenv("VLLM_API_URL", "http://localhost:8000/v1")
+    # VLLM_API_TOKEN: API token for vLLM authentication (empty for local/no auth)
+    VLLM_API_TOKEN: str = os.getenv("VLLM_API_TOKEN", "")
+    
+    # Legacy aliases for backward compatibility
+    LLM_API_BASE: str = os.getenv("LLM_API_BASE", os.getenv("VLLM_API_URL", "http://localhost:8000/v1"))
+    LLM_MODEL_NAME: str = os.getenv("LLM_MODEL_NAME", "dicta-il/DictaLM-3.0-24B-Thinking-W4A16")
+    
     # =============================================================================
     # EMBEDDING MODEL CONFIGURATION
     # =============================================================================
     
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-mpnet-base-v2")
-    EMBEDDING_BATCH_SIZE: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
+    # multilingual-e5-large: Best multilingual model with excellent Hebrew support
+    # Requires "query: " and "passage: " prefixes for optimal performance
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-large")
+    EMBEDDING_BATCH_SIZE: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "16"))  # Smaller batch for larger model
+    
+    # Enable query/passage prefix for E5 models (improves retrieval quality)
+    USE_E5_PREFIX: bool = os.getenv("USE_E5_PREFIX", "true").lower() == "true"
     
     # Local model cache directory (for offline operation)
     EMBEDDING_CACHE_DIR: str = os.getenv("EMBEDDING_CACHE_DIR", "models/embeddings")
@@ -101,6 +140,16 @@ class Config:
     LATEX_PROCESSING_ENABLED: bool = os.getenv("LATEX_PROCESSING_ENABLED", "true").lower() == "true"
     
     # =============================================================================
+    # LANGUAGE CONFIGURATION
+    # =============================================================================
+    
+    # Primary language for the RAG system (affects prompts and processing)
+    PRIMARY_LANGUAGE: str = os.getenv("PRIMARY_LANGUAGE", "hebrew")  # hebrew, english, or auto
+    
+    # Enable bilingual responses (answers in both Hebrew and English)
+    BILINGUAL_RESPONSES: bool = os.getenv("BILINGUAL_RESPONSES", "false").lower() == "true"
+    
+    # =============================================================================
     # MODEL LOADING OPTIMIZATION
     # =============================================================================
     
@@ -117,13 +166,18 @@ class Config:
         """Validate critical configuration values."""
         errors = []
         
-        # Check data path exists
-        if not Path(cls.DATA_PATH).exists():
-            errors.append(f"DATA_PATH not found: {cls.DATA_PATH}")
+        # DATA_PATH is optional - app works with user uploads only
+        if cls.DATA_PATH and not Path(cls.DATA_PATH).exists():
+            print(f"⚠️  DATA_PATH specified but not found: {cls.DATA_PATH}")
         
-        # Check model path exists
-        if not Path(cls.MODEL_PATH).exists():
+        # Check model path exists (only for llama_cpp backend)
+        if cls.LLM_BACKEND == "llama_cpp" and not Path(cls.MODEL_PATH).exists():
             errors.append(f"MODEL_PATH not found: {cls.MODEL_PATH}")
+        
+        # Validate LLM backend
+        valid_backends = ["llama_cpp", "vllm"]
+        if cls.LLM_BACKEND not in valid_backends:
+            errors.append(f"LLM_BACKEND must be one of {valid_backends}, got {cls.LLM_BACKEND}")
         
         # Validate numeric ranges
         if cls.N_THREADS < 1:
@@ -164,15 +218,37 @@ class Config:
         print("\n🗂️  Data & Paths:")
         print(f"   DATA_PATH:           {cls.DATA_PATH}")
         print(f"   INDEX_DIR:           {cls.INDEX_DIR}")
+        print(f"   UPLOADS_DIR:         {cls.UPLOADS_DIR}")
         print(f"   MODEL_PATH:          {cls.MODEL_PATH}")
         
-        print("\n🤖 Model Settings:")
+        print("\n📄 Document Processing (Docling):")
+        print(f"   OCR_ENABLED:         {cls.OCR_ENABLED}")
+        print(f"   OCR_LANGUAGES:       {cls.OCR_LANGUAGES}")
+        print(f"   CHUNK_SIZE:          {cls.CHUNK_SIZE}")
+        print(f"   CHUNK_OVERLAP:       {cls.CHUNK_OVERLAP}")
+        print(f"   SUPPORTED_FORMATS:   {cls.SUPPORTED_FORMATS[:50]}...")
+        
+        print("\n🌍 Language Settings:")
+        print(f"   PRIMARY_LANGUAGE:    {cls.PRIMARY_LANGUAGE}")
+        print(f"   BILINGUAL_RESPONSES: {cls.BILINGUAL_RESPONSES}")
+        
+        print("\n🤖 LLM Model Settings:")
+        print(f"   LLM_BACKEND:         {cls.LLM_BACKEND}")
+        if cls.LLM_BACKEND == "llama_cpp":
+            print(f"   MODEL_PATH:          {cls.MODEL_PATH}")
+            print(f"   N_THREADS:           {cls.N_THREADS}")
+            print(f"   N_CTX:               {cls.N_CTX}")
+            print(f"   N_GPU_LAYERS:        {cls.N_GPU_LAYERS}")
+        else:
+            print(f"   VLLM_API_URL:        {cls.VLLM_API_URL}")
+            print(f"   VLLM_API_TOKEN:      {'***' + cls.VLLM_API_TOKEN[-4:] if cls.VLLM_API_TOKEN else 'Not set (local mode)'}")
+            print(f"   LLM_MODEL_NAME:      {cls.LLM_MODEL_NAME}")
+        
+        print("\n🔤 Embedding Settings:")
         print(f"   EMBEDDING_MODEL:     {cls.EMBEDDING_MODEL}")
         print(f"   EMBEDDING_CACHE_DIR: {cls.EMBEDDING_CACHE_DIR}")
         print(f"   EMBEDDING_LOCAL_ONLY: {cls.EMBEDDING_LOCAL_ONLY}")
-        print(f"   N_THREADS:           {cls.N_THREADS}")
-        print(f"   N_CTX:               {cls.N_CTX}")
-        print(f"   N_GPU_LAYERS:        {cls.N_GPU_LAYERS}")
+        print(f"   USE_E5_PREFIX:       {cls.USE_E5_PREFIX}")
         
         print("\n🔍 Retrieval:")
         print(f"   DEFAULT_TOP_K:       {cls.DEFAULT_TOP_K}")

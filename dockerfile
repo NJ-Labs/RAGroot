@@ -11,6 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
     python3.11-dev \
     wget \
+    # Tesseract OCR and language packs for Hebrew/English OCR
+    tesseract-ocr \
+    tesseract-ocr-heb \
+    tesseract-ocr-eng \
+    tesseract-ocr-ara \
+    libtesseract-dev \
+    libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \

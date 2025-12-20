@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # RAG Development Application with DictaLM 3.0 + Docling + Hebrew OCR
+  # =============================================================================
+  rag-dev:
+    # Use pre-built image (build once, mount source for changes)
+    image: ragroot:v2.1-docling
+    # Or uncomment below to build from Dockerfile.dev
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.dev
+    container_name: ragroot
+    ports:
+      - "8080:8080"  # RAG Application
+      - "8000:8000"  # vLLM API Server
+    volumes:
+      # === SOURCE CODE MOUNTS (live reload - no rebuild needed) ===
+      - ./main.py:/app/main.py:ro
+      - ./utils:/app/utils:ro
+      - ./static:/app/static:ro
+      - ./tools:/app/tools:ro
+      - ./Documentation:/app/Documentation:ro
+      
+      # === PERSISTENT DATA ===
+      # Persist uploaded documents
+      - ./uploads:/app/uploads
+      # Persist vector index
+      - ./index:/app/index
+      # Mount sample data
+      - ./data:/app/data:ro
+      # Mount local models (optional, for caching)
+      - ./models/embeddings:/app/models/embeddings
+      
+      # === CONFIG (optional - uncomment to override) ===
+      # - ./.env.docker.example:/app/.env:ro
+    environment:
+      # LLM Backend
+      - LLM_BACKEND=vllm
+      - LLM_API_BASE=http://localhost:8000/v1
+      - LLM_MODEL_NAME=dicta-il/DictaLM-3.0-Nemotron-12B-Instruct-W4A16
+      # Document Processing
+      - OCR_ENABLED=true
+      - OCR_LANGUAGES=heb,eng
+      # Language
+      - PRIMARY_LANGUAGE=hebrew
+      - BILINGUAL_RESPONSES=false
+      # Embedding
+      - EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+      - EMBEDDING_LOCAL_ONLY=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s  # vLLM takes time to load
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # GPU memory requirements for DictaLM 3.0 24B W4A16
+    # Recommended: 24GB+ VRAM (RTX 4090, A100, etc.)
+    shm_size: '16gb'
+
+volumes:
+  rag-dev-index:
+    driver: local
+  rag-dev-uploads:
+    driver: local
