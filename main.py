@@ -110,13 +110,16 @@ def initialize_system():
     
     logger.info(f"Uploads directory: {uploads_dir}")
     
-    # Initialize document processor for on-demand processing
+    # Initialize document processor with smart chunking (Chroma Research 2024)
+    # Reference: https://research.trychroma.com/evaluating-chunking
     doc_processor = DoclingProcessor(
         ocr_enabled=config.OCR_ENABLED,
         ocr_languages=config.OCR_LANGUAGES.split(','),
         chunk_size=config.CHUNK_SIZE,
         chunk_overlap=config.CHUNK_OVERLAP,
-        use_gpu=not config.FORCE_CPU
+        use_gpu=not config.FORCE_CPU,
+        chunking_strategy=getattr(config, 'CHUNKING_STRATEGY', 'recursive'),
+        use_smart_chunking=getattr(config, 'USE_SMART_CHUNKING', True)
     )
     
     # Initialize indexer
@@ -420,20 +423,31 @@ async def clear_all_documents():
 
 @app.get("/documents/supported-formats")
 async def get_supported_formats():
-    """Get list of supported file formats."""
+    """Get list of supported file formats with chunking info."""
     from utils.config import config
     from utils.document_processor import DoclingProcessor
     
     return {
         "supported_formats": config.SUPPORTED_FORMATS.split(','),
         "format_categories": {
-            "documents": [".pdf", ".docx", ".doc", ".pptx", ".xlsx"],
-            "text": [".txt", ".md", ".csv", ".json", ".jsonl"],
+            "documents": [".pdf", ".docx", ".doc"],
+            "presentations": [".pptx", ".ppt"],
+            "spreadsheets": [".xlsx", ".xls"],
+            "text": [".txt", ".md", ".markdown", ".csv", ".json", ".jsonl"],
             "web": [".html", ".htm"],
             "images": [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"]
         },
+        "chunking": {
+            "strategy": getattr(config, 'CHUNKING_STRATEGY', 'recursive'),
+            "chunk_size": config.CHUNK_SIZE,
+            "chunk_overlap": config.CHUNK_OVERLAP,
+            "smart_chunking_enabled": getattr(config, 'USE_SMART_CHUNKING', True),
+            "description": "Based on Chroma Research 2024 - RecursiveCharacterTextSplitter with 250 tokens/125 overlap = 96%+ recall"
+        },
         "ocr_enabled": config.OCR_ENABLED,
-        "ocr_languages": config.OCR_LANGUAGES.split(',')
+        "ocr_languages": config.OCR_LANGUAGES.split(','),
+        "hebrew_support": True,
+        "english_support": True
     }
 
 

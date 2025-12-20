@@ -37,14 +37,26 @@ class Config:
     OCR_ENABLED: bool = os.getenv("OCR_ENABLED", "true").lower() == "true"
     OCR_LANGUAGES: str = os.getenv("OCR_LANGUAGES", "heb,eng")  # Comma-separated
     
-    # Chunking Configuration
-    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "512"))  # Target chunk size in tokens
-    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "50"))  # Overlap between chunks
+    # Chunking Configuration (based on Chroma Research 2024)
+    # Reference: https://research.trychroma.com/evaluating-chunking
+    # Optimal: 250 tokens with 50% overlap (125 tokens) = 96%+ recall
+    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "250"))  # Target chunk size in tokens (200-400 optimal)
+    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "125"))  # 50% overlap for max recall
     
-    # Supported input types
+    # Smart Chunking Strategy (recursive, semantic, structure_aware, page_level)
+    # - recursive: Best all-rounder (RecursiveCharacterTextSplitter) - 96%+ recall
+    # - semantic: Best coherence (ClusterSemanticChunker) - uses embeddings
+    # - structure_aware: Best for formatted docs (Markdown, HTML, Word)
+    # - page_level: Best for PDFs (NVIDIA benchmark winner)
+    CHUNKING_STRATEGY: str = os.getenv("CHUNKING_STRATEGY", "recursive")
+    
+    # Enable research-backed smart chunking
+    USE_SMART_CHUNKING: bool = os.getenv("USE_SMART_CHUNKING", "true").lower() == "true"
+    
+    # Supported input types (all formats in Hebrew and English)
     SUPPORTED_FORMATS: str = os.getenv(
         "SUPPORTED_FORMATS",
-        ".pdf,.docx,.doc,.pptx,.xlsx,.html,.htm,.md,.txt,.csv,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.json,.jsonl"
+        ".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.html,.htm,.md,.markdown,.txt,.csv,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.json,.jsonl"
     )
     
     # =============================================================================
@@ -221,11 +233,13 @@ class Config:
         print(f"   UPLOADS_DIR:         {cls.UPLOADS_DIR}")
         print(f"   MODEL_PATH:          {cls.MODEL_PATH}")
         
-        print("\n📄 Document Processing (Docling):")
+        print("\n📄 Document Processing (Docling + Smart Chunking):")
         print(f"   OCR_ENABLED:         {cls.OCR_ENABLED}")
         print(f"   OCR_LANGUAGES:       {cls.OCR_LANGUAGES}")
-        print(f"   CHUNK_SIZE:          {cls.CHUNK_SIZE}")
-        print(f"   CHUNK_OVERLAP:       {cls.CHUNK_OVERLAP}")
+        print(f"   CHUNK_SIZE:          {cls.CHUNK_SIZE} (optimal: 200-400)")
+        print(f"   CHUNK_OVERLAP:       {cls.CHUNK_OVERLAP} (50% = max recall)")
+        print(f"   CHUNKING_STRATEGY:   {cls.CHUNKING_STRATEGY}")
+        print(f"   USE_SMART_CHUNKING:  {cls.USE_SMART_CHUNKING}")
         print(f"   SUPPORTED_FORMATS:   {cls.SUPPORTED_FORMATS[:50]}...")
         
         print("\n🌍 Language Settings:")

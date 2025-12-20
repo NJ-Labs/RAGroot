@@ -7,6 +7,14 @@ Enhanced URL handling with:
 - Robust HTTP fetching with retries and proper headers
 - Fallback PDF text extraction using PyMuPDF
 - Better support for Hebrew and multilingual documents
+
+Smart Chunking Strategies (based on Chroma Research 2024):
+- RecursiveCharacterTextSplitter: 250 tokens / 125 overlap = 96%+ recall
+- ClusterSemanticChunker: Best coherence (200-400 tokens, 0% overlap)
+- Structure-aware chunking for formatted documents
+- Page-level chunking for PDFs (NVIDIA benchmark winner)
+
+Reference: https://research.trychroma.com/evaluating-chunking
 """
 import os
 import hashlib
@@ -21,6 +29,28 @@ from urllib.parse import urlparse, unquote
 import json
 
 logger = logging.getLogger(__name__)
+
+# Import smart chunking components
+try:
+    from .smart_chunker import (
+        SmartChunker,
+        ChunkingStrategy,
+        RecursiveCharacterTextSplitter,
+        ClusterSemanticChunker,
+        StructureAwareChunker,
+        PageLevelChunker,
+        get_optimal_config,
+    )
+    from .document_agents import (
+        DocumentAgentFactory,
+        DocumentProcessingOrchestrator,
+        process_document as agent_process_document,
+    )
+    SMART_CHUNKING_AVAILABLE = True
+    logger.info("Smart chunking module loaded successfully")
+except ImportError as e:
+    SMART_CHUNKING_AVAILABLE = False
+    logger.warning(f"Smart chunking module not available: {e}")
 
 
 # =============================================================================
@@ -446,9 +476,11 @@ class DoclingProcessor:
         self,
         ocr_enabled: bool = True,
         ocr_languages: List[str] = None,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
-        use_gpu: bool = False
+        chunk_size: int = 250,  # Optimal per Chroma Research
+        chunk_overlap: int = 125,  # 50% overlap for max recall
+        use_gpu: bool = False,
+        chunking_strategy: str = "recursive",  # recursive, semantic, structure_aware, page_level
+        use_smart_chunking: bool = True,  # Use research-backed chunking
     ):
         """
         Initialize the Docling document processor.
@@ -456,9 +488,13 @@ class DoclingProcessor:
         Args:
             ocr_enabled: Enable OCR for scanned documents and images
             ocr_languages: List of OCR language codes (e.g., ['heb', 'eng'])
-            chunk_size: Target chunk size in tokens
-            chunk_overlap: Overlap between chunks in tokens
+            chunk_size: Target chunk size in tokens (200-400 optimal)
+            chunk_overlap: Overlap between chunks (50% = highest recall per Chroma Research)
             use_gpu: Use GPU acceleration for OCR and models
+            chunking_strategy: Strategy to use (recursive, semantic, structure_aware, page_level)
+            use_smart_chunking: Use research-backed smart chunking strategies
+        
+        Reference: https://research.trychroma.com/evaluating-chunking
         """
         from .config import config
         
@@ -467,10 +503,26 @@ class DoclingProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.use_gpu = use_gpu and not config.FORCE_CPU
+        self.chunking_strategy = chunking_strategy
+        self.use_smart_chunking = use_smart_chunking and SMART_CHUNKING_AVAILABLE
         
         self._converter = None
         self._chunker = None
+        self._smart_chunker = None
         self._initialized = False
+        
+        # Initialize smart chunker if available
+        if self.use_smart_chunking:
+            try:
+                self._smart_chunker = SmartChunker(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    use_semantic_for_coherence=(chunking_strategy == "semantic")
+                )
+                logger.info(f"Smart chunking enabled with strategy: {chunking_strategy}")
+            except Exception as e:
+                logger.warning(f"Could not initialize smart chunker: {e}")
+                self.use_smart_chunking = False
         
     def _initialize(self):
         """Lazy initialization of Docling components."""
@@ -893,8 +945,63 @@ class DoclingProcessor:
         file_type: str
     ) -> List[DocumentChunk]:
         """
-        Chunk raw text when Docling chunker is not available.
-        Uses paragraph-based chunking with size limits.
+        Chunk raw text using research-backed chunking strategies.
+        
+        Based on Chroma Research (2024):
+        - RecursiveCharacterTextSplitter: 250 tokens / 125 overlap = 96%+ recall
+        - Page-level chunking for PDFs (NVIDIA benchmark winner)
+        
+        Reference: https://research.trychroma.com/evaluating-chunking
+        """
+        chunks = []
+        
+        # Use smart chunking if available
+        if self.use_smart_chunking and self._smart_chunker:
+            try:
+                # Get text chunks using smart chunker
+                text_chunks = self._smart_chunker.chunk(
+                    text,
+                    file_type=file_type
+                )
+                
+                # Convert TextChunk to DocumentChunk
+                for idx, tc in enumerate(text_chunks):
+                    chunk_language = tc.metadata.language or self.detect_language(tc.content)
+                    
+                    chunks.append(DocumentChunk(
+                        chunk_id=f"{doc_id}_{idx:04d}",
+                        document_id=doc_id,
+                        content=tc.content,
+                        metadata={
+                            "document_filename": filename,
+                            "file_type": file_type,
+                            "chunk_strategy": tc.metadata.chunk_strategy,
+                            "element_type": tc.metadata.element_type,
+                        },
+                        page_number=tc.metadata.page_number,
+                        section_title=tc.metadata.section_title,
+                        language=chunk_language
+                    ))
+                
+                logger.info(f"Smart chunking produced {len(chunks)} chunks using {self.chunking_strategy} strategy")
+                return chunks
+                
+            except Exception as e:
+                logger.warning(f"Smart chunking failed, using fallback: {e}")
+        
+        # Fallback: Original paragraph-based chunking
+        return self._fallback_chunk_text(text, doc_id, filename, file_type)
+    
+    def _fallback_chunk_text(
+        self,
+        text: str,
+        doc_id: str,
+        filename: str,
+        file_type: str
+    ) -> List[DocumentChunk]:
+        """
+        Fallback paragraph-based chunking.
+        Used when smart chunking is not available.
         """
         chunks = []
         
@@ -930,7 +1037,7 @@ class DoclingProcessor:
         if current_para:
             paragraphs.append(('\n'.join(current_para), current_para_page))
         
-        # Chunk paragraphs with size limits
+        # Chunk paragraphs with size limits (using optimal 250 token size)
         current_chunk = []
         current_chunk_size = 0
         current_chunk_page = None

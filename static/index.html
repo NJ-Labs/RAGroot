@@ -831,7 +831,7 @@
                             <i class="fas fa-cloud-upload-alt text-xl text-primary"></i>
                         </div>
                         <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Drop files or click to browse</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-500">PDF, DOCX, Images, Videos, and more</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-500">PDF, Word, PowerPoint, Excel, HTML, Markdown & more</p>
                     </div>
                 </div>
                 
@@ -853,7 +853,7 @@
                     <div class="w-14 h-14 rounded-xl bg-slate-200 dark:bg-slate-800/40 flex items-center justify-center mb-4">
                         <i class="fas fa-file-lines text-2xl text-slate-400 dark:text-slate-600"></i>
                     </div>
-                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400" id="emptyStateText">Your saved sources will appear here. Add PDFs, videos, websites, text files, PowerPoint presentations, or other supported formats to get started.</p>
+                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400" id="emptyStateText">Your saved sources will appear here. Add PDFs, Word docs, PowerPoint, Excel, HTML, Markdown, images, or URLs in Hebrew or English to get started.</p>
                 </div>
             </div>
             
@@ -869,8 +869,8 @@
 
     </div>
 
-    <!-- Hidden File Input -->
-    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.pptx,.xlsx,.txt,.md,.csv,.json,.jsonl,.html,.htm,.png,.jpg,.jpeg,.tiff,.bmp,.webp" class="hidden" onchange="handleFileSelect(event)">
+    <!-- Hidden File Input - Supports all formats (Hebrew & English) -->
+    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.txt,.md,.markdown,.csv,.json,.jsonl,.html,.htm,.png,.jpg,.jpeg,.tiff,.bmp,.webp" class="hidden" onchange="handleFileSelect(event)">
 
 
     <!-- Scripts -->
