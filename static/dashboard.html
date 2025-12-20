@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAGroot - Knowledge Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        /* ══════════════════════════════════════════════════════════════════════
+           FONTS
+           ══════════════════════════════════════════════════════════════════════ */
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Light.woff2') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Medium.woff2') format('woff2');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-SemiBold.woff2') format('woff2');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Geist';
+            src: url('/static/fonts/Geist-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           CSS CUSTOM PROPERTIES
+           ══════════════════════════════════════════════════════════════════════ */
+        :root {
+            --bg-base: #1a1b1e;
+            --bg-elevated: #232428;
+            --bg-surface: #2a2b30;
+            --bg-hover: #35363c;
+            --bg-active: #3e4046;
+            
+            --text-primary: #f0f0f2;
+            --text-secondary: #a0a4ad;
+            --text-tertiary: #6b7080;
+            --text-muted: #4d5261;
+            
+            --accent-blue: #4a9eff;
+            --accent-purple: #a78bfa;
+            --accent-teal: #2dd4bf;
+            --accent-coral: #fb7185;
+            --accent-amber: #fbbf24;
+            --accent-emerald: #34d399;
+            
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.15);
+            
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+            
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            --space-3xl: 64px;
+            
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+            --radius-full: 9999px;
+            
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           BASE RESET
+           ══════════════════════════════════════════════════════════════════════ */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: var(--radius-full); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--bg-active); }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           AMBIENT BACKGROUND
+           ══════════════════════════════════════════════════════════════════════ */
+        .ambient-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.12;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 { width: 600px; height: 600px; background: var(--accent-purple); top: -200px; right: -100px; }
+        .orb-2 { width: 500px; height: 500px; background: var(--accent-blue); bottom: -150px; left: -100px; animation-delay: -7s; }
+        .orb-3 { width: 400px; height: 400px; background: var(--accent-teal); top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: -14s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(20px, 10px) scale(1.02); }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           TOP NAVIGATION
+           ══════════════════════════════════════════════════════════════════════ */
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-md) var(--space-xl);
+            background: rgba(26, 27, 30, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .nav-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .nav-title {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-full);
+            background: linear-gradient(135deg, var(--accent-coral), var(--accent-amber));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px var(--bg-hover);
+        }
+
+        .create-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            background: linear-gradient(135deg, var(--accent-blue), #3b82f6);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-sm), 0 0 20px rgba(74, 158, 255, 0.2);
+        }
+
+        .create-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md), 0 0 30px rgba(74, 158, 255, 0.3);
+        }
+
+        .create-btn svg { width: 16px; height: 16px; }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .nav-tabs {
+            display: flex;
+            align-items: center;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            padding: 3px;
+            margin-right: var(--space-md);
+        }
+
+        .nav-tab {
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .nav-tab:hover { color: var(--text-primary); }
+        .nav-tab.active { background: var(--bg-surface); color: var(--text-primary); }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--border-default);
+        }
+
+        .icon-btn svg { width: 18px; height: 18px; }
+
+        .view-toggle {
+            display: flex;
+            align-items: center;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            padding: 3px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .view-toggle-btn {
+            width: 32px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .view-toggle-btn:hover { color: var(--text-secondary); }
+        .view-toggle-btn.active { background: var(--bg-surface); color: var(--text-primary); }
+        .view-toggle-btn svg { width: 16px; height: 16px; }
+
+        .sort-dropdown {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-sm) var(--space-md);
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .sort-dropdown:hover { background: var(--bg-hover); border-color: var(--border-default); }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           MAIN CONTENT
+           ══════════════════════════════════════════════════════════════════════ */
+        .main-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-xl) var(--space-3xl);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .section-link {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: color var(--transition-fast);
+        }
+
+        .section-link:hover { color: var(--accent-blue); }
+        .section-link svg { width: 14px; height: 14px; }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           FEATURED SECTION
+           ══════════════════════════════════════════════════════════════════════ */
+        .featured-section {
+            margin-bottom: var(--space-3xl);
+        }
+
+        .featured-scroll {
+            display: flex;
+            gap: var(--space-lg);
+            overflow-x: auto;
+            padding-bottom: var(--space-md);
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .featured-scroll::-webkit-scrollbar { height: 6px; }
+        .featured-scroll::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: var(--radius-full); }
+
+        .featured-card {
+            flex-shrink: 0;
+            width: 280px;
+            height: 200px;
+            position: relative;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            cursor: pointer;
+            scroll-snap-align: start;
+            transition: transform var(--transition-base), box-shadow var(--transition-base);
+            text-decoration: none;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .featured-card-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: transform var(--transition-slow);
+        }
+
+        .featured-card:hover .featured-card-bg { transform: scale(1.08); }
+
+        .featured-card-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.2) 100%);
+        }
+
+        .featured-card-content {
+            position: absolute;
+            inset: 0;
+            padding: var(--space-lg);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: var(--space-md);
+            right: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 500;
+            color: white;
+        }
+
+        .featured-badge-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .featured-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: var(--space-xs);
+            line-height: 1.3;
+        }
+
+        .featured-card-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Gradient backgrounds */
+        .gradient-purple { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); }
+        .gradient-blue { background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%); }
+        .gradient-teal { background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 50%, #3b82f6 100%); }
+        .gradient-coral { background: linear-gradient(135deg, #f43f5e 0%, #fb7185 50%, #fbbf24 100%); }
+        .gradient-emerald { background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%); }
+        .gradient-sunset { background: linear-gradient(135deg, #dc2626 0%, #f97316 50%, #fbbf24 100%); }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           RECENT SECTION
+           ══════════════════════════════════════════════════════════════════════ */
+        .recent-section { margin-bottom: var(--space-2xl); }
+
+        .recent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .recent-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .recent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+
+        .recent-card:hover {
+            background: var(--bg-surface);
+            border-color: var(--border-default);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .recent-card:hover::before { opacity: 1; }
+
+        .recent-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: var(--space-md);
+        }
+
+        .recent-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .icon-docs { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
+        .icon-research { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+        .icon-ai { background: linear-gradient(135deg, #ec4899, #f472b6); }
+        .icon-code { background: linear-gradient(135deg, #10b981, #34d399); }
+        .icon-data { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+
+        .card-menu-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            opacity: 0;
+            transition: all var(--transition-fast);
+        }
+
+        .recent-card:hover .card-menu-btn { opacity: 1; }
+        .card-menu-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+        .card-menu-btn svg { width: 16px; height: 16px; }
+
+        .recent-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+            line-height: 1.4;
+        }
+
+        .recent-card-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .recent-card-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+
+        .meta-item svg { width: 12px; height: 12px; }
+
+        /* Create New Card */
+        .create-card {
+            background: transparent;
+            border: 2px dashed var(--border-default);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+            transition: all var(--transition-base);
+        }
+
+        .create-card:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .create-card::before { display: none; }
+
+        .create-card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-lg);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--space-md);
+            color: var(--accent-blue);
+            transition: all var(--transition-fast);
+        }
+
+        .create-card:hover .create-card-icon {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+            transform: scale(1.05);
+        }
+
+        .create-card-icon svg { width: 24px; height: 24px; }
+
+        .create-card-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color var(--transition-fast);
+        }
+
+        .create-card:hover .create-card-text { color: var(--text-primary); }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           EMPTY STATE
+           ══════════════════════════════════════════════════════════════════════ */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-3xl) var(--space-xl);
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-xl);
+            background: var(--bg-elevated);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--space-lg);
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon svg { width: 36px; height: 36px; }
+        .empty-state-title { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm); }
+        .empty-state-text { font-size: 14px; color: var(--text-secondary); max-width: 400px; line-height: 1.6; }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           LOADING SKELETON
+           ══════════════════════════════════════════════════════════════════════ */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-surface) 0%, var(--bg-hover) 50%, var(--bg-surface) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-md);
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            height: 180px;
+            border-radius: var(--radius-lg);
+        }
+
+        .skeleton-featured {
+            flex-shrink: 0;
+            width: 280px;
+            height: 200px;
+            border-radius: var(--radius-xl);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           MODAL
+           ══════════════════════════════════════════════════════════════════════ */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            width: 90%;
+            max-width: 480px;
+            transform: scale(0.95) translateY(20px);
+            transition: transform var(--transition-base);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-md);
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--space-sm);
+            justify-content: flex-end;
+            margin-top: var(--space-lg);
+        }
+
+        .btn {
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3b8beb;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           RESPONSIVE
+           ══════════════════════════════════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+            .top-nav { padding: var(--space-md) var(--space-lg); }
+            .main-content { padding: var(--space-lg); }
+            .nav-tabs { display: none; }
+            .featured-card { width: 260px; height: 180px; }
+        }
+
+        @media (max-width: 768px) {
+            .top-nav { padding: var(--space-md); flex-wrap: wrap; gap: var(--space-md); }
+            .nav-left { order: 1; width: 100%; justify-content: space-between; }
+            .nav-right { order: 2; width: 100%; justify-content: flex-end; }
+            .create-btn span { display: none; }
+            .create-btn { padding: var(--space-sm); }
+            .main-content { padding: var(--space-md); }
+            .featured-card { width: 240px; height: 160px; }
+            .recent-grid { grid-template-columns: 1fr; }
+            .sort-dropdown span { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .nav-title { display: none; }
+            .featured-scroll { gap: var(--space-md); }
+            .featured-card { width: 220px; height: 150px; }
+            .featured-card-content { padding: var(--space-md); }
+            .featured-card-title { font-size: 14px; }
+        }
+
+        /* Hidden */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
+        <div class="ambient-orb orb-3"></div>
+    </div>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="user-avatar" data-tooltip="Your Profile">U</div>
+            
+            <a href="/" class="nav-brand">
+                <div class="nav-logo">R</div>
+                <span class="nav-title">RAGroot</span>
+            </a>
+            
+            <button class="create-btn" id="createRootBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Create New Root</span>
+            </button>
+        </div>
+
+        <div class="nav-right">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-filter="all">All</button>
+                <button class="nav-tab" data-filter="featured">Featured</button>
+                <button class="nav-tab" data-filter="recent">Recent</button>
+            </div>
+
+            <button class="sort-dropdown">
+                <span>Most Recent</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" data-view="grid">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                    </svg>
+                </button>
+                <button class="view-toggle-btn" data-view="list">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <button class="icon-btn" data-tooltip="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Featured Knowledge Bases -->
+        <section class="featured-section" id="featuredSection">
+            <div class="section-header">
+                <h2 class="section-title">Featured Knowledge Bases</h2>
+                <a href="#" class="section-link">
+                    View all
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            </div>
+            <div class="featured-scroll" id="featuredScroll">
+                <!-- Loading skeletons -->
+                <div class="skeleton skeleton-featured"></div>
+                <div class="skeleton skeleton-featured"></div>
+                <div class="skeleton skeleton-featured"></div>
+            </div>
+        </section>
+
+        <!-- Recent Knowledge Bases -->
+        <section class="recent-section">
+            <div class="section-header">
+                <h2 class="section-title">Recent Knowledge Bases</h2>
+            </div>
+            <div class="recent-grid" id="recentGrid">
+                <!-- Loading skeletons -->
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create Root Modal -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Root</h3>
+                <button class="modal-close" id="closeModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="createRootForm">
+                <div class="form-group">
+                    <label class="form-label">Name (optional)</label>
+                    <input type="text" class="form-input" id="rootName" placeholder="Leave empty to auto-generate from documents">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (optional)</label>
+                    <input type="text" class="form-input" id="rootDescription" placeholder="Brief description of this knowledge base">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelCreate">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Root</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════════════════════════════════
+        // STATE
+        // ══════════════════════════════════════════════════════════════════════
+        let roots = [];
+        let currentFilter = 'all';
+
+        // ══════════════════════════════════════════════════════════════════════
+        // GRADIENT BACKGROUNDS
+        // ══════════════════════════════════════════════════════════════════════
+        const gradients = [
+            'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+            'linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%)',
+            'linear-gradient(135deg, #14b8a6 0%, #06b6d4 50%, #3b82f6 100%)',
+            'linear-gradient(135deg, #f43f5e 0%, #fb7185 50%, #fbbf24 100%)',
+            'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)',
+            'linear-gradient(135deg, #dc2626 0%, #f97316 50%, #fbbf24 100%)'
+        ];
+
+        const iconSvgs = {
+            docs: `<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+            research: `<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`,
+            ai: `<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>`,
+            code: `<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
+            data: `<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`
+        };
+
+        // ══════════════════════════════════════════════════════════════════════
+        // UTILITY FUNCTIONS
+        // ══════════════════════════════════════════════════════════════════════
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            });
+        }
+
+        function getGradient(index) {
+            return gradients[index % gradients.length];
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // RENDER FUNCTIONS
+        // ══════════════════════════════════════════════════════════════════════
+        function renderFeaturedCard(root, index) {
+            return `
+                <a href="/app/${root.id}" class="featured-card">
+                    <div class="featured-card-bg" style="background: ${getGradient(index)};"></div>
+                    <div class="featured-card-overlay"></div>
+                    <div class="featured-card-content">
+                        <div class="featured-badge">
+                            <div class="featured-badge-icon" style="background: rgba(255,255,255,0.2);">
+                                ${iconSvgs[root.icon_type] || iconSvgs.docs}
+                            </div>
+                            ${root.documents.length} sources
+                        </div>
+                        <h3 class="featured-card-title">${root.name}</h3>
+                        <div class="featured-card-meta">
+                            <span>${formatDate(root.created_at)}</span>
+                            <span>•</span>
+                            <span>${root.documents.length} document${root.documents.length !== 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }
+
+        function renderRecentCard(root) {
+            return `
+                <a href="/app/${root.id}" class="recent-card">
+                    <div class="recent-card-header">
+                        <div class="recent-card-icon icon-${root.icon_type || 'docs'}">
+                            ${iconSvgs[root.icon_type] || iconSvgs.docs}
+                        </div>
+                        <button class="card-menu-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="1.5"></circle>
+                                <circle cx="12" cy="12" r="1.5"></circle>
+                                <circle cx="12" cy="19" r="1.5"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <h3 class="recent-card-title">${root.name}</h3>
+                    <p class="recent-card-subtitle">${root.description}</p>
+                    <div class="recent-card-meta">
+                        <span class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            ${formatDate(root.created_at)}
+                        </span>
+                        <span class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            ${root.documents.length} source${root.documents.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                </a>
+            `;
+        }
+
+        function renderCreateCard() {
+            return `
+                <div class="recent-card create-card" id="createCardInGrid">
+                    <div class="create-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <span class="create-card-text">Create New Root</span>
+                </div>
+            `;
+        }
+
+        function renderEmptyState() {
+            return `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="empty-state-title">No knowledge bases yet</h3>
+                    <p class="empty-state-text">Create your first Root to start organizing and querying your documents with AI-powered search.</p>
+                </div>
+            `;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // DATA FETCHING
+        // ══════════════════════════════════════════════════════════════════════
+        async function fetchRoots() {
+            try {
+                const response = await fetch('/api/roots');
+                const data = await response.json();
+                roots = data.roots || [];
+                renderDashboard();
+            } catch (error) {
+                console.error('Error fetching roots:', error);
+                roots = [];
+                renderDashboard();
+            }
+        }
+
+        function renderDashboard() {
+            const featuredSection = document.getElementById('featuredSection');
+            const featuredScroll = document.getElementById('featuredScroll');
+            const recentGrid = document.getElementById('recentGrid');
+
+            // Filter roots
+            let featured = roots.filter(r => r.is_featured);
+            let recent = roots;
+
+            if (currentFilter === 'featured') {
+                recent = featured;
+            } else if (currentFilter === 'recent') {
+                recent = roots.slice(0, 10);
+            }
+
+            // Render featured section
+            if (featured.length > 0) {
+                featuredSection.classList.remove('hidden');
+                featuredScroll.innerHTML = featured.map((root, i) => renderFeaturedCard(root, i)).join('');
+            } else {
+                featuredSection.classList.add('hidden');
+            }
+
+            // Render recent grid
+            if (roots.length === 0) {
+                recentGrid.innerHTML = renderCreateCard() + renderEmptyState();
+            } else {
+                recentGrid.innerHTML = renderCreateCard() + recent.map(root => renderRecentCard(root)).join('');
+            }
+
+            // Rebind create card event
+            const createCardInGrid = document.getElementById('createCardInGrid');
+            if (createCardInGrid) {
+                createCardInGrid.addEventListener('click', openCreateModal);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // MODAL HANDLING
+        // ══════════════════════════════════════════════════════════════════════
+        const createModal = document.getElementById('createModal');
+        const createRootBtn = document.getElementById('createRootBtn');
+        const closeModalBtn = document.getElementById('closeModal');
+        const cancelCreateBtn = document.getElementById('cancelCreate');
+        const createRootForm = document.getElementById('createRootForm');
+
+        function openCreateModal() {
+            createModal.classList.add('active');
+            document.getElementById('rootName').focus();
+        }
+
+        function closeCreateModal() {
+            createModal.classList.remove('active');
+            createRootForm.reset();
+        }
+
+        createRootBtn.addEventListener('click', openCreateModal);
+        closeModalBtn.addEventListener('click', closeCreateModal);
+        cancelCreateBtn.addEventListener('click', closeCreateModal);
+
+        createModal.addEventListener('click', (e) => {
+            if (e.target === createModal) {
+                closeCreateModal();
+            }
+        });
+
+        createRootForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('rootName').value.trim();
+            const description = document.getElementById('rootDescription').value.trim();
+
+            try {
+                const response = await fetch('/api/roots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name || null,
+                        description: description || null
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.root) {
+                    closeCreateModal();
+                    // Navigate to the app with the new root
+                    window.location.href = `/app/${data.root.id}`;
+                }
+            } catch (error) {
+                console.error('Error creating root:', error);
+                alert('Failed to create Root. Please try again.');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════
+        // VIEW TOGGLE & TABS
+        // ══════════════════════════════════════════════════════════════════════
+        const viewToggleBtns = document.querySelectorAll('.view-toggle-btn');
+        viewToggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                viewToggleBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        const navTabs = document.querySelectorAll('.nav-tab');
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                navTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentFilter = tab.dataset.filter;
+                renderDashboard();
+            });
+        });
+
+        // ══════════════════════════════════════════════════════════════════════
+        // DRAG SCROLL
+        // ══════════════════════════════════════════════════════════════════════
+        const featuredScroll = document.querySelector('.featured-scroll');
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        featuredScroll?.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - featuredScroll.offsetLeft;
+            scrollLeft = featuredScroll.scrollLeft;
+        });
+
+        featuredScroll?.addEventListener('mouseleave', () => isDown = false);
+        featuredScroll?.addEventListener('mouseup', () => isDown = false);
+
+        featuredScroll?.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - featuredScroll.offsetLeft;
+            featuredScroll.scrollLeft = scrollLeft - (x - startX) * 2;
+        });
+
+        // ══════════════════════════════════════════════════════════════════════
+        // KEYBOARD SHORTCUTS
+        // ══════════════════════════════════════════════════════════════════════
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && createModal.classList.contains('active')) {
+                closeCreateModal();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                openCreateModal();
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════
+        // INIT
+        // ══════════════════════════════════════════════════════════════════════
+        fetchRoots();
+    </script>
+</body>
+</html>

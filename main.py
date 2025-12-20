@@ -4,6 +4,8 @@ import json
 import time
 import argparse
 import shutil
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 from contextlib import asynccontextmanager
@@ -13,7 +15,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTa
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uvicorn
 
 from utils.indexer import VectorIndexer
@@ -92,6 +94,127 @@ class QueryResponse(BaseModel):
     performance_metrics: Optional[Dict] = None
     detected_language: Optional[str] = None  # "hebrew" or "english"
     agent_used: Optional[str] = None  # "Hebrew Agent" or "English Agent"
+
+
+# =============================================================================
+# ROOT (KNOWLEDGE BASE) MODELS AND STORAGE
+# =============================================================================
+
+class RootCreate(BaseModel):
+    """Request model for creating a new Root."""
+    name: Optional[str] = None  # If not provided, will be auto-generated
+    description: Optional[str] = None
+
+class RootDocument(BaseModel):
+    """Document within a Root."""
+    document_id: str
+    filename: str
+    file_type: str
+    language: Optional[str] = None
+    added_at: str
+
+class Root(BaseModel):
+    """A Knowledge Base (Root) containing documents."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    name: str  # 4-word summary title
+    description: str
+    icon_type: str = "docs"  # docs, research, ai, code, data
+    documents: List[RootDocument] = []
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    is_featured: bool = False
+
+class RootsStorage:
+    """Manages persistent storage of Roots."""
+    
+    def __init__(self, storage_path: str = "index/roots.json"):
+        self.storage_path = Path(storage_path)
+        self.roots: Dict[str, Root] = {}
+        self._load()
+    
+    def _load(self):
+        """Load roots from disk."""
+        if self.storage_path.exists():
+            try:
+                with open(self.storage_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for root_data in data:
+                        root = Root(**root_data)
+                        self.roots[root.id] = root
+                logger.info(f"Loaded {len(self.roots)} roots from storage")
+            except Exception as e:
+                logger.error(f"Error loading roots: {e}")
+                self.roots = {}
+        else:
+            self.roots = {}
+    
+    def _save(self):
+        """Save roots to disk."""
+        try:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.storage_path, 'w', encoding='utf-8') as f:
+                json.dump([root.model_dump() for root in self.roots.values()], f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving roots: {e}")
+    
+    def create(self, root: Root) -> Root:
+        """Create a new root."""
+        self.roots[root.id] = root
+        self._save()
+        return root
+    
+    def get(self, root_id: str) -> Optional[Root]:
+        """Get a root by ID."""
+        return self.roots.get(root_id)
+    
+    def get_all(self) -> List[Root]:
+        """Get all roots sorted by updated_at descending."""
+        return sorted(self.roots.values(), key=lambda r: r.updated_at, reverse=True)
+    
+    def update(self, root_id: str, **kwargs) -> Optional[Root]:
+        """Update a root."""
+        if root_id not in self.roots:
+            return None
+        root = self.roots[root_id]
+        for key, value in kwargs.items():
+            if hasattr(root, key):
+                setattr(root, key, value)
+        root.updated_at = datetime.now().isoformat()
+        self._save()
+        return root
+    
+    def add_document(self, root_id: str, doc: RootDocument) -> Optional[Root]:
+        """Add a document to a root."""
+        if root_id not in self.roots:
+            return None
+        root = self.roots[root_id]
+        # Check if document already exists
+        if not any(d.document_id == doc.document_id for d in root.documents):
+            root.documents.append(doc)
+            root.updated_at = datetime.now().isoformat()
+            self._save()
+        return root
+    
+    def remove_document(self, root_id: str, document_id: str) -> Optional[Root]:
+        """Remove a document from a root."""
+        if root_id not in self.roots:
+            return None
+        root = self.roots[root_id]
+        root.documents = [d for d in root.documents if d.document_id != document_id]
+        root.updated_at = datetime.now().isoformat()
+        self._save()
+        return root
+    
+    def delete(self, root_id: str) -> bool:
+        """Delete a root."""
+        if root_id in self.roots:
+            del self.roots[root_id]
+            self._save()
+            return True
+        return False
+
+# Global roots storage
+roots_storage: Optional[RootsStorage] = None
 
 
 def initialize_system():
@@ -176,11 +299,55 @@ def initialize_system():
     
     image_generator = ImageGenerator()
     
+    # Initialize Roots storage
+    global roots_storage
+    roots_storage = RootsStorage()
+    
+    # Create default root from existing documents if no roots exist
+    if len(roots_storage.roots) == 0 and indexer and len(indexer.documents) > 0:
+        logger.info("Creating default Root from existing indexed documents...")
+        default_root = Root(
+            id="default",
+            name="Initial Document Collection",
+            description="Auto-created knowledge base from previously indexed documents",
+            icon_type="docs",
+            documents=[
+                RootDocument(
+                    document_id=doc.get('document_id', ''),
+                    filename=doc.get('filename', 'Unknown'),
+                    file_type=doc.get('file_type', 'unknown'),
+                    language=doc.get('language'),
+                    added_at=datetime.now().isoformat()
+                )
+                for doc in indexer.get_document_list()
+            ],
+            is_featured=True
+        )
+        roots_storage.create(default_root)
+        logger.info(f"Created default Root with {len(default_root.documents)} documents")
+    
     logger.info("System initialized successfully with Agentic RAG (Hebrew + English agents)")
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root():
-    """Serve the main web UI."""
+async def read_dashboard():
+    """Serve the knowledge dashboard landing page (main entry point)."""
+    from fastapi import Response
+    with open("static/dashboard.html", "r", encoding="utf-8") as f:
+        content = f.read()
+    return Response(
+        content=content,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+@app.get("/app", response_class=HTMLResponse)
+@app.get("/app/{root_id}", response_class=HTMLResponse)
+async def read_app(root_id: Optional[str] = None):
+    """Serve the RAG chat application UI."""
     from fastapi import Response
     with open("static/index.html", "r", encoding="utf-8") as f:
         content = f.read()
@@ -202,6 +369,278 @@ async def health_check():
         "indexed_documents": len(indexer.documents) if indexer else 0,
         "indexed_chunks": len(indexer.chunks) if indexer else 0,
         "index_stats": indexer.get_index_size() if indexer else {}
+    }
+
+
+# =============================================================================
+# ROOT (KNOWLEDGE BASE) MANAGEMENT ENDPOINTS
+# =============================================================================
+
+def generate_root_title(documents: List[dict]) -> str:
+    """Generate a 4-word title from document names/content."""
+    if not documents:
+        return "New Knowledge Base"
+    
+    # Extract keywords from filenames
+    words = []
+    for doc in documents[:3]:  # Use first 3 docs
+        filename = doc.get('filename', '')
+        # Remove extension and split by common separators
+        name = Path(filename).stem
+        name_words = name.replace('_', ' ').replace('-', ' ').split()
+        # Filter out numbers and very short words
+        words.extend([w.title() for w in name_words if len(w) > 2 and not w.isdigit()])
+    
+    # Take unique words, limit to 4
+    unique_words = list(dict.fromkeys(words))[:4]
+    if len(unique_words) < 2:
+        return "Document Collection"
+    return ' '.join(unique_words)
+
+def generate_root_description(documents: List[dict]) -> str:
+    """Generate a description from documents."""
+    if not documents:
+        return "A new knowledge base for your documents"
+    
+    doc_types = set()
+    languages = set()
+    for doc in documents:
+        doc_types.add(doc.get('file_type', 'document'))
+        if doc.get('language'):
+            languages.add(doc.get('language'))
+    
+    type_str = ', '.join(sorted(doc_types))
+    lang_str = ' and '.join(sorted(languages)) if languages else 'multiple languages'
+    
+    return f"Collection of {len(documents)} {type_str} document(s) in {lang_str}"
+
+def get_icon_type(documents: List[dict]) -> str:
+    """Determine icon type based on document content."""
+    if not documents:
+        return "docs"
+    
+    filenames = ' '.join([d.get('filename', '').lower() for d in documents])
+    
+    if any(kw in filenames for kw in ['research', 'paper', 'arxiv', 'study']):
+        return "research"
+    elif any(kw in filenames for kw in ['ai', 'ml', 'model', 'neural', 'transformer']):
+        return "ai"
+    elif any(kw in filenames for kw in ['code', 'python', 'javascript', 'api']):
+        return "code"
+    elif any(kw in filenames for kw in ['data', 'dataset', 'csv', 'json']):
+        return "data"
+    return "docs"
+
+
+@app.get("/api/roots")
+async def list_roots():
+    """List all knowledge bases (Roots)."""
+    if not roots_storage:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    roots = roots_storage.get_all()
+    return {
+        "roots": [root.model_dump() for root in roots],
+        "total": len(roots),
+        "featured": [r.model_dump() for r in roots if r.is_featured]
+    }
+
+
+@app.get("/api/roots/{root_id}")
+async def get_root(root_id: str):
+    """Get a specific Root by ID."""
+    if not roots_storage:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = roots_storage.get(root_id)
+    if not root:
+        raise HTTPException(status_code=404, detail=f"Root {root_id} not found")
+    
+    return root.model_dump()
+
+
+@app.post("/api/roots")
+async def create_root(request: RootCreate):
+    """Create a new Root (Knowledge Base)."""
+    if not roots_storage:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = Root(
+        name=request.name or "New Knowledge Base",
+        description=request.description or "A new knowledge base for your documents",
+        icon_type="docs",
+        documents=[],
+        is_featured=False
+    )
+    
+    created_root = roots_storage.create(root)
+    return {
+        "status": "success",
+        "message": "Root created successfully",
+        "root": created_root.model_dump()
+    }
+
+
+@app.post("/api/roots/{root_id}/documents")
+async def add_document_to_root(
+    root_id: str,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
+    """Upload and add a document to a specific Root."""
+    if not roots_storage or not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = roots_storage.get(root_id)
+    if not root:
+        raise HTTPException(status_code=404, detail=f"Root {root_id} not found")
+    
+    from utils.config import config
+    
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    supported = config.SUPPORTED_FORMATS.split(',')
+    
+    if file_ext not in supported:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format: {file_ext}. Supported: {supported}"
+        )
+    
+    try:
+        # Save uploaded file
+        upload_path = Path(config.UPLOADS_DIR) / f"{int(time.time() * 1000)}_{file.filename}"
+        with open(upload_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        logger.info(f"File saved to {upload_path}")
+        
+        # Index the document
+        processed_doc = indexer.index_document(str(upload_path))
+        
+        # Add to root
+        root_doc = RootDocument(
+            document_id=processed_doc.document_id,
+            filename=processed_doc.filename,
+            file_type=processed_doc.file_type,
+            language=processed_doc.language,
+            added_at=datetime.now().isoformat()
+        )
+        roots_storage.add_document(root_id, root_doc)
+        
+        # Update root metadata if needed
+        updated_root = roots_storage.get(root_id)
+        if updated_root and len(updated_root.documents) > 0:
+            # Auto-update title and description if still default
+            if updated_root.name in ["New Knowledge Base", "Untitled"]:
+                doc_list = [{"filename": d.filename, "file_type": d.file_type, "language": d.language} 
+                           for d in updated_root.documents]
+                new_title = generate_root_title(doc_list)
+                new_desc = generate_root_description(doc_list)
+                new_icon = get_icon_type(doc_list)
+                roots_storage.update(root_id, name=new_title, description=new_desc, icon_type=new_icon)
+        
+        return {
+            "status": "success",
+            "message": f"Document added to Root '{root.name}'",
+            "document_id": processed_doc.document_id,
+            "filename": processed_doc.filename,
+            "chunks_created": len(processed_doc.chunks),
+            "language": processed_doc.language,
+            "root": roots_storage.get(root_id).model_dump()
+        }
+    except Exception as e:
+        logger.error(f"Error adding document to root: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/roots/{root_id}/documents/{document_id}")
+async def remove_document_from_root(root_id: str, document_id: str):
+    """Remove a document from a Root (also removes from index)."""
+    if not roots_storage or not indexer:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = roots_storage.get(root_id)
+    if not root:
+        raise HTTPException(status_code=404, detail=f"Root {root_id} not found")
+    
+    # Remove from index
+    indexer.remove_document(document_id)
+    
+    # Remove from root
+    roots_storage.remove_document(root_id, document_id)
+    
+    return {
+        "status": "success",
+        "message": f"Document {document_id} removed from Root",
+        "root": roots_storage.get(root_id).model_dump()
+    }
+
+
+@app.put("/api/roots/{root_id}")
+async def update_root(root_id: str, request: RootCreate):
+    """Update a Root's name and description."""
+    if not roots_storage:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = roots_storage.get(root_id)
+    if not root:
+        raise HTTPException(status_code=404, detail=f"Root {root_id} not found")
+    
+    updates = {}
+    if request.name:
+        updates['name'] = request.name
+    if request.description:
+        updates['description'] = request.description
+    
+    updated_root = roots_storage.update(root_id, **updates)
+    
+    return {
+        "status": "success",
+        "message": "Root updated successfully",
+        "root": updated_root.model_dump()
+    }
+
+
+@app.put("/api/roots/{root_id}/featured")
+async def toggle_root_featured(root_id: str, featured: bool = True):
+    """Toggle featured status of a Root."""
+    if not roots_storage:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = roots_storage.get(root_id)
+    if not root:
+        raise HTTPException(status_code=404, detail=f"Root {root_id} not found")
+    
+    updated_root = roots_storage.update(root_id, is_featured=featured)
+    
+    return {
+        "status": "success",
+        "root": updated_root.model_dump()
+    }
+
+
+@app.delete("/api/roots/{root_id}")
+async def delete_root(root_id: str, delete_documents: bool = False):
+    """Delete a Root. Optionally delete its documents from the index."""
+    if not roots_storage:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    
+    root = roots_storage.get(root_id)
+    if not root:
+        raise HTTPException(status_code=404, detail=f"Root {root_id} not found")
+    
+    # Optionally delete documents from index
+    if delete_documents and indexer:
+        for doc in root.documents:
+            indexer.remove_document(doc.document_id)
+    
+    roots_storage.delete(root_id)
+    
+    return {
+        "status": "success",
+        "message": f"Root '{root.name}' deleted" + (" with all documents" if delete_documents else "")
     }
 
 
